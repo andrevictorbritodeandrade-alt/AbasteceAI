@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-gasolina: #991b1b;
+  --color-etanol: #16a34a;
+  --color-gnv: #0ea5e9;
+  --color-diesel: #eab308;
+  
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  html {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+    background-color: #000;
+  }
+  
+  body {
+    @apply text-gray-200 antialiased selection:bg-gasolina/30;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl shadow-xl;
+  }
+  
+  .glass-modal {
+    @apply bg-black/80 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl;
+  }
+  
+  .input-field {
+    @apply bg-white/5 border border-white/10 rounded-xl p-3 outline-none focus:ring-2 focus:ring-gasolina/50 focus:border-gasolina/50 transition-all text-white;
+  }
+  
+  .btn-primary {
+    @apply bg-gasolina hover:bg-gasolina/80 text-white font-bold py-3 px-6 rounded-xl transition-all active:scale-95 shadow-lg shadow-gasolina/20;
+  }
+}

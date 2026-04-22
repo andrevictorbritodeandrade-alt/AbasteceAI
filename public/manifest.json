@@ -1,0 +1,17 @@
+{
+  "name": "Meu Combustível",
+  "short_name": "Combustível",
+  "description": "Gerenciador de abastecimentos e manutenção veicular",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#991b1b",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3418/3418886.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
