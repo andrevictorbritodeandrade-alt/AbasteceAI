@@ -44,6 +44,7 @@ const getInitialSeedData = (): RawFuelEntry[] => {
     { id: '7', date: new Date('2025-10-29T12:00:00Z'), totalValue: 50.00, pricePerLiter: 6.09, kmEnd: 136296, fuelType: FuelType.GASOLINE, notes: '' },
     { id: '8', date: new Date('2025-10-30T12:00:00Z'), totalValue: 255.84, pricePerLiter: 5.89, kmEnd: 136366, fuelType: FuelType.GASOLINE, notes: 'Gasto real de R$ 100,00' },
     { id: '9', date: new Date('2026-04-22T15:36:00Z'), totalValue: 50.00, pricePerLiter: 6.69, kmEnd: 143065, fuelType: FuelType.GASOLINE, notes: 'Abastecimento via comando' },
+    { id: '10', date: new Date('2026-04-11T12:00:00Z'), totalValue: 100.00, pricePerLiter: 6.79, kmEnd: 142907, fuelType: FuelType.GASOLINE, notes: 'Abastecimento via comando' },
   ];
 };
 
@@ -74,11 +75,14 @@ const App: React.FC = () => {
         
         // Ensure the newly recorded item is present
         const seedData = getInitialSeedData();
-        const hasSpecificEntry = parsed.some((e: any) => e.id === '9');
-        if (!hasSpecificEntry) {
-          const entry9 = seedData.find(e => e.id === '9');
-          if (entry9) parsed.push(entry9);
-        }
+        const manuallyAddedIds = ['9', '10'];
+        
+        manuallyAddedIds.forEach(id => {
+          if (!parsed.some((e: any) => e.id === id)) {
+            const entry = seedData.find(e => e.id === id);
+            if (entry) parsed.push(entry);
+          }
+        });
         
         setRawEntries(parsed);
       } else {
@@ -643,7 +647,7 @@ const App: React.FC = () => {
           </div>
         </section>
 
-        <footer className="pt-8 pb-12 flex flex-col items-center gap-4 opacity-50">
+        <footer className="pt-8 pb-12 flex flex-col items-center gap-4 opacity-70">
           <button 
             onClick={handleExportCSV}
             className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] hover:text-white transition-colors"
@@ -651,7 +655,11 @@ const App: React.FC = () => {
             <ExportIcon size={14} />
             Exportar Dados
           </button>
-          <p className="text-[10px] font-mono">v2.0.0 • MEU COMBUSTÍVEL</p>
+          <div className="flex flex-col items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-center">
+            <p className="text-gray-400">Desenvolvido por: <span className="text-white">André Brito</span></p>
+            <p className="text-gray-500">Contato: <span className="text-gray-300">britodeandrade@gmail.com</span></p>
+            <p className="text-gray-600">Versão: 1.0</p>
+          </div>
         </footer>
       </main>
 
