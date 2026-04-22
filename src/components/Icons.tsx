@@ -13,7 +13,8 @@ import {
   Bell, 
   BarChart3,
   X,
-  Lightbulb
+  Lightbulb,
+  Coins
 } from 'lucide-react';
 
 export const PlusIcon = ({ size = 20, className = "" }) => <Plus size={size} className={className} />;
@@ -30,3 +31,4 @@ export const BellIcon = ({ size = 20, className = "" }) => <Bell size={size} cla
 export const ChartIcon = ({ size = 20, className = "" }) => <BarChart3 size={size} className={className} />;
 export const XIcon = ({ size = 20, className = "" }) => <X size={size} className={className} />;
 export const LightbulbIcon = ({ size = 20, className = "" }) => <Lightbulb size={size} className={className} />;
+export const CoinsIcon = ({ size = 20, className = "" }) => <Coins size={size} className={className} />;

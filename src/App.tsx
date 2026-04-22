@@ -15,6 +15,7 @@ import { EntryDetailModal } from './components/EntryDetailModal';
 import { RemindersModal } from './components/RemindersModal';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { FuelComparisonModal } from './components/FuelComparisonModal';
+import { FuelPredictionModal } from './components/FuelPredictionModal';
 import { 
   PlusIcon, 
   CalculatorIcon, 
@@ -28,7 +29,8 @@ import {
   EditIcon, 
   BellIcon,
   ChartIcon,
-  LightbulbIcon
+  LightbulbIcon,
+  CoinsIcon
 } from './components/Icons';
 
 const getInitialSeedData = (): RawFuelEntry[] => {
@@ -41,6 +43,7 @@ const getInitialSeedData = (): RawFuelEntry[] => {
     { id: '6', date: new Date('2025-10-25T12:00:00Z'), totalValue: 50.00, pricePerLiter: 5.79, kmEnd: 136216, fuelType: FuelType.GASOLINE, notes: '' },
     { id: '7', date: new Date('2025-10-29T12:00:00Z'), totalValue: 50.00, pricePerLiter: 6.09, kmEnd: 136296, fuelType: FuelType.GASOLINE, notes: '' },
     { id: '8', date: new Date('2025-10-30T12:00:00Z'), totalValue: 255.84, pricePerLiter: 5.89, kmEnd: 136366, fuelType: FuelType.GASOLINE, notes: 'Gasto real de R$ 100,00' },
+    { id: '9', date: new Date('2026-04-22T15:36:00Z'), totalValue: 50.00, pricePerLiter: 6.69, kmEnd: 143065, fuelType: FuelType.GASOLINE, notes: 'Abastecimento via comando' },
   ];
 };
 
@@ -55,7 +58,7 @@ const App: React.FC = () => {
   const [rawEntries, setRawEntries] = useState<RawFuelEntry[]>([]);
   const [maintenanceData, setMaintenanceData] = useState<MaintenanceData>({ oil: 0, tires: 0, engine: 0 });
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [activeModal, setActiveModal] = useState<'entry' | 'trip' | 'maintenance' | 'detail' | 'reminders' | 'comparison' | null>(null);
+  const [activeModal, setActiveModal] = useState<'entry' | 'trip' | 'maintenance' | 'detail' | 'reminders' | 'comparison' | 'prediction' | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<ProcessedFuelEntry | null>(null);
   const [entryToEdit, setEntryToEdit] = useState<RawFuelEntry | null>(null);
   const [monthFilter, setMonthFilter] = useState<string>(getCurrentMonthString());
@@ -68,6 +71,15 @@ const App: React.FC = () => {
           ...e,
           date: new Date(e.date),
         }));
+        
+        // Ensure the newly recorded item is present
+        const seedData = getInitialSeedData();
+        const hasSpecificEntry = parsed.some((e: any) => e.id === '9');
+        if (!hasSpecificEntry) {
+          const entry9 = seedData.find(e => e.id === '9');
+          if (entry9) parsed.push(entry9);
+        }
+        
         setRawEntries(parsed);
       } else {
         setRawEntries(getInitialSeedData());
@@ -136,6 +148,20 @@ const App: React.FC = () => {
   const currentMileage = useMemo(() => {
     return rawEntries.length > 0 ? Math.max(...rawEntries.map(e => e.kmEnd)) : 0;
   }, [rawEntries]);
+
+  const fuelAverages = useMemo(() => {
+    const gasEntries = processedEntries.filter(e => e.fuelType === FuelType.GASOLINE && e.avgKmpl > 0);
+    const ethEntries = processedEntries.filter(e => e.fuelType === FuelType.ETHANOL && e.avgKmpl > 0);
+    
+    const gasAvg = gasEntries.length > 0 
+      ? gasEntries.reduce((sum, e) => sum + e.avgKmpl, 0) / gasEntries.length 
+      : 12.5;
+    const ethAvg = ethEntries.length > 0 
+      ? ethEntries.reduce((sum, e) => sum + e.avgKmpl, 0) / ethEntries.length 
+      : 8.5;
+      
+    return { gasAvg, ethAvg };
+  }, [processedEntries]);
 
   const filteredEntries = useMemo(() => {
     if (monthFilter === 'all') return processedEntries;
@@ -456,7 +482,7 @@ const App: React.FC = () => {
             <PlusIcon size={16} className="text-etanol" />
             <h2 className="text-sm font-extrabold text-etanol uppercase tracking-[0.2em] font-display">Ações Rápidas</h2>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <motion.button 
               whileHover={{ y: -4 }}
               whileTap={{ scale: 0.96 }}
@@ -466,7 +492,7 @@ const App: React.FC = () => {
               <div className="p-3 bg-gasolina/10 rounded-2xl group-hover:bg-gasolina/20 transition-colors">
                 <PlusIcon className="text-gasolina" />
               </div>
-              <span className="font-bold text-xs uppercase tracking-wider text-center">Abastecer</span>
+              <span className="font-bold text-[10px] uppercase tracking-wider text-center">Abastecer</span>
             </motion.button>
             <motion.button 
               whileHover={{ y: -4 }}
@@ -477,18 +503,29 @@ const App: React.FC = () => {
               <div className="p-3 bg-etanol/10 rounded-2xl group-hover:bg-etanol/20 transition-colors">
                 <CalculatorIcon className="text-etanol" />
               </div>
-              <span className="font-bold text-xs uppercase tracking-wider text-center">Viagem</span>
+              <span className="font-bold text-[10px] uppercase tracking-wider text-center">Viagem</span>
             </motion.button>
             <motion.button 
               whileHover={{ y: -4 }}
               whileTap={{ scale: 0.96 }}
               onClick={() => setActiveModal('comparison')}
-              className="glass-card p-6 flex flex-col items-center gap-3 group hover:border-diesel/50 transition-all"
+              className="glass-card p-6 flex flex-col items-center gap-3 group hover:border-gasolina/50 transition-all"
             >
-              <div className="p-3 bg-diesel/10 rounded-2xl group-hover:bg-diesel/20 transition-colors">
-                <LightbulbIcon className="text-diesel" />
+              <div className="p-3 bg-gasolina/10 rounded-2xl group-hover:bg-gasolina/20 transition-colors">
+                <LightbulbIcon className="text-gasolina" />
               </div>
-              <span className="font-bold text-xs uppercase tracking-wider text-center">Vantagem</span>
+              <span className="font-bold text-[10px] uppercase tracking-wider text-center">Vantagem</span>
+            </motion.button>
+            <motion.button 
+              whileHover={{ y: -4 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => setActiveModal('prediction')}
+              className="glass-card p-6 flex flex-col items-center gap-3 group hover:border-etanol/50 transition-all"
+            >
+              <div className="p-3 bg-etanol/10 rounded-2xl group-hover:bg-etanol/20 transition-colors">
+                <CoinsIcon className="text-etanol" />
+              </div>
+              <span className="font-bold text-[10px] uppercase tracking-wider text-center">Previsão</span>
             </motion.button>
             <motion.button 
               whileHover={{ y: -4 }}
@@ -499,7 +536,7 @@ const App: React.FC = () => {
               <div className="p-3 bg-gnv/10 rounded-2xl group-hover:bg-gnv/20 transition-colors">
                 <WrenchIcon className="text-gnv" />
               </div>
-              <span className="font-bold text-xs uppercase tracking-wider text-center">Oficina</span>
+              <span className="font-bold text-[10px] uppercase tracking-wider text-center">Oficina</span>
             </motion.button>
             <motion.button 
               whileHover={{ y: -4 }}
@@ -510,7 +547,7 @@ const App: React.FC = () => {
               <div className="p-3 bg-diesel/10 rounded-2xl group-hover:bg-diesel/20 transition-colors">
                 <BellIcon className="text-diesel" />
               </div>
-              <span className="font-bold text-xs uppercase tracking-wider text-center">Lembretes</span>
+              <span className="font-bold text-[10px] uppercase tracking-wider text-center">Lembretes</span>
             </motion.button>
           </div>
         </section>
@@ -656,6 +693,15 @@ const App: React.FC = () => {
         <FuelComparisonModal
           isOpen={true}
           onClose={handleCloseModal}
+        />
+      )}
+
+      {activeModal === 'prediction' && (
+        <FuelPredictionModal
+          isOpen={true}
+          onClose={handleCloseModal}
+          avgKmplGas={fuelAverages.gasAvg}
+          avgKmplEth={fuelAverages.ethAvg}
         />
       )}
       {selectedEntry && (
