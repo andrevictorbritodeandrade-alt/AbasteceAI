@@ -54,17 +54,49 @@ export const EntryDetailModal: React.FC<EntryDetailModalProps> = ({ isOpen, onCl
                 <span className="text-gray-300">Distância Percorrida</span>
               </div>
               <span className="font-bold text-white">
-                {entry.distance > 0 ? `${entry.distance.toFixed(0)} km` : 'Aguardando próximo'}
+                {entry.distance > 0 ? `${entry.distance.toFixed(0)} km` : 'Primeiro registro'}
               </span>
             </div>
 
             <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl">
               <div className="flex items-center gap-3">
                 <GaugeIcon size={20} className="text-gray-400" />
-                <span className="text-gray-300">Média de Consumo</span>
+                <div>
+                  <span className="text-gray-300 block">Média de Consumo</span>
+                  <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider block mt-0.5">Calculada p/ Abastecimento</span>
+                </div>
               </div>
-              <span className="font-bold text-green-400">
+              <span className="font-bold text-white">
                 {entry.avgKmpl > 0 ? `${entry.avgKmpl.toFixed(2)} km/L` : '--'}
+              </span>
+            </div>
+
+            {entry.avgKmplReal && entry.avgKmplReal > 0 && (
+              <div className="flex items-center justify-between p-4 bg-emerald-950/20 border border-emerald-500/20 rounded-xl shadow-[inset_0_0_10px_rgba(16,185,129,0.05)]">
+                <div className="flex items-center gap-3">
+                  <span className="text-emerald-400 text-base">⚡</span>
+                  <div>
+                    <span className="font-extrabold text-emerald-400 block text-xs tracking-wider uppercase">Média Consumo Real</span>
+                    <span className="text-[9px] text-gray-400 block mt-0.5">Pelos litros usados no próximo abastecimento</span>
+                  </div>
+                </div>
+                <span className="font-black text-emerald-300 text-lg">
+                  {entry.avgKmplReal.toFixed(2)} km/L
+                </span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl">
+              <div className="flex items-center gap-3">
+                <FuelPumpIcon size={20} className="text-gray-400" />
+                <span className="text-gray-300">Tanque Cheio?</span>
+              </div>
+              <span className={`px-2.5 py-1 text-[10px] font-bold uppercase rounded-full ${
+                entry.isFull !== false 
+                  ? 'bg-green-500/10 text-green-400 border border-green-500/25' 
+                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/25'
+              }`}>
+                {entry.isFull !== false ? 'Sim (Completo)' : 'Não (Parcial)'}
               </span>
             </div>
           </div>

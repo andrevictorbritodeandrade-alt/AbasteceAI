@@ -22,28 +22,62 @@
   html {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
-    background-color: #000;
+    background-color: #020205;
   }
   
   body {
     @apply text-gray-200 antialiased selection:bg-gasolina/30 font-semibold;
+    background: radial-gradient(circle at 50% 0%, rgba(153, 27, 27, 0.15) 0%, rgba(22, 163, 74, 0.05) 50%, rgba(2, 2, 5, 1) 100%);
+    background-attachment: fixed;
   }
 }
 
 @layer components {
+  /* Ultra-modern Glassmorphism 2026 */
   .glass-card {
-    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl shadow-xl;
+    @apply bg-slate-950/40 backdrop-blur-xl border border-white/5 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] transition-all duration-300;
+  }
+  
+  .glass-card-hover {
+    @apply hover:border-white/10 hover:bg-slate-900/40 hover:shadow-[0_8px_32px_0_rgba(153,27,27,0.1)];
+  }
+
+  .tech-border-glow-gasolina {
+    @apply border-gasolina/20 hover:border-gasolina/50 hover:shadow-[0_0_20px_rgba(153,27,27,0.25)];
+  }
+
+  .tech-border-glow-etanol {
+    @apply border-etanol/20 hover:border-etanol/50 hover:shadow-[0_0_20px_rgba(22,163,74,0.25)];
+  }
+
+  .tech-border-glow-gnv {
+    @apply border-gnv/20 hover:border-gnv/50 hover:shadow-[0_0_20px_rgba(14,165,233,0.25)];
+  }
+
+  .tech-border-glow-diesel {
+    @apply border-diesel/20 hover:border-diesel/50 hover:shadow-[0_0_20px_rgba(234,179,8,0.25)];
   }
   
   .glass-modal {
-    @apply bg-black/80 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl;
+    @apply bg-black/90 backdrop-blur-2xl border border-white/10 rounded-3xl shadow-2xl;
   }
   
   .input-field {
-    @apply bg-white/5 border border-white/10 rounded-xl p-3 outline-none focus:ring-2 focus:ring-gasolina/50 focus:border-gasolina/50 transition-all text-white;
+    @apply bg-white/5 border border-white/5 rounded-xl p-3 outline-none focus:ring-1 focus:ring-gasolina/50 focus:border-gasolina/50 transition-all text-white font-mono;
   }
   
   .btn-primary {
     @apply bg-gasolina hover:bg-gasolina/80 text-white font-bold py-3 px-6 rounded-xl transition-all active:scale-95 shadow-lg shadow-gasolina/20;
+  }
+
+  /* Cyberpunk design touches */
+  .tech-grid-bg {
+    background-image: linear-gradient(rgba(255, 255, 255, 0.01) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255, 255, 255, 0.01) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  .neon-text-glow {
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.2), 0 0 20px rgba(153, 27, 27, 0.2);
   }
 }

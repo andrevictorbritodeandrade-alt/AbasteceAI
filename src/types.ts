@@ -13,6 +13,7 @@ export interface RawFuelEntry {
   kmEnd: number;
   fuelType: FuelType;
   notes: string;
+  isFull?: boolean;
 }
 
 export interface ProcessedFuelEntry extends RawFuelEntry {
@@ -21,12 +22,20 @@ export interface ProcessedFuelEntry extends RawFuelEntry {
   kmStart: number;
   distance: number;
   avgKmpl: number;
+  avgKmplReal?: number;
 }
 
 export interface MaintenanceData {
   oil: number;
   tires: number;
   engine: number;
+  brakes: number;
+  fuelFilter: number;
+  airFilter: number;
+  cabinFilter: number;
+  coolant: number;
+  sparkPlugs: number;
+  timingBelt: number;
 }
 
 export interface Reminder {
@@ -41,3 +50,14 @@ export interface Reminder {
   lastCompletionKm?: number;
   lastCompletionDate?: string;
 }
+
+export interface FavoriteStation {
+  id: string;
+  name: string;
+  brand: string;
+  rating: number; // 1-5
+  bestFuel: FuelType;
+  notes: string;
+  city: string;
+}
+

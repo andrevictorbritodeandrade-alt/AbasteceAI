@@ -18,7 +18,8 @@ export const EntryModal: React.FC<EntryModalProps> = ({ isOpen, onClose, onSave,
     pricePerLiter: '',
     kmEnd: '',
     fuelType: FuelType.GASOLINE,
-    notes: ''
+    notes: '',
+    isFull: true
   });
 
   useEffect(() => {
@@ -33,10 +34,15 @@ export const EntryModal: React.FC<EntryModalProps> = ({ isOpen, onClose, onSave,
         pricePerLiter: entryToEdit.pricePerLiter.toString(),
         kmEnd: entryToEdit.kmEnd.toString(),
         fuelType: entryToEdit.fuelType,
-        notes: entryToEdit.notes
+        notes: entryToEdit.notes,
+        isFull: entryToEdit.isFull !== false
       });
     } else {
-      setFormData(prev => ({ ...prev, kmEnd: lastKm > 0 ? lastKm.toString() : '' }));
+      setFormData(prev => ({ 
+        ...prev, 
+        kmEnd: lastKm > 0 ? lastKm.toString() : '',
+        isFull: true
+      }));
     }
   }, [entryToEdit, lastKm]);
 
@@ -49,7 +55,8 @@ export const EntryModal: React.FC<EntryModalProps> = ({ isOpen, onClose, onSave,
       pricePerLiter: parseFloat(formData.pricePerLiter),
       kmEnd: parseInt(formData.kmEnd),
       fuelType: formData.fuelType,
-      notes: formData.notes
+      notes: formData.notes,
+      isFull: formData.isFull
     });
   };
 
@@ -144,6 +151,25 @@ export const EntryModal: React.FC<EntryModalProps> = ({ isOpen, onClose, onSave,
                   value={formData.kmEnd}
                   onChange={e => setFormData({ ...formData, kmEnd: e.target.value })}
                 />
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all cursor-pointer select-none" onClick={() => setFormData({ ...formData, isFull: !formData.isFull })}>
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-white">Completou o tanque?</span>
+                  <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Tanque cheio / Completar</span>
+                </div>
+                <button
+                  type="button"
+                  className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors duration-300 focus:outline-none ${
+                    formData.isFull ? 'bg-etanol shadow-[0_0_8px_rgba(22,163,74,0.4)]' : 'bg-white/10'
+                  }`}
+                >
+                  <div
+                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${
+                      formData.isFull ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
               </div>
 
               <div className="space-y-1.5">

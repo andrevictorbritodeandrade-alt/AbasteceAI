@@ -12,7 +12,11 @@ export const MonthSummary: React.FC<MonthSummaryProps> = ({ entries, filterValue
     const totalLiters = entries.reduce((sum, e) => sum + (e.totalValue / e.pricePerLiter), 0);
     const entriesWithDistance = entries.filter(e => e.distance > 0);
     const totalDistance = entriesWithDistance.reduce((sum, e) => sum + e.distance, 0);
-    const avgKmpl = totalDistance > 0 ? totalDistance / entriesWithDistance.reduce((sum, e) => sum + (e.totalValue / e.pricePerLiter), 0) : 0;
+    
+    const entriesWithKmpl = entries.filter(e => (e.avgKmplReal && e.avgKmplReal > 0) || e.avgKmpl > 0);
+    const avgKmpl = entriesWithKmpl.length > 0
+      ? entriesWithKmpl.reduce((sum, e) => sum + (e.avgKmplReal && e.avgKmplReal > 0 ? e.avgKmplReal : e.avgKmpl), 0) / entriesWithKmpl.length
+      : 0;
 
     return { totalSpent, totalLiters, totalDistance, avgKmpl };
   }, [entries]);
