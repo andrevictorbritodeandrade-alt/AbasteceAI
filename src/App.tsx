@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { RawFuelEntry, ProcessedFuelEntry, MaintenanceData, FuelType, Reminder, FavoriteStation } from './types';
+import { useFirebaseSync } from './hooks/useFirebaseSync';
 import { StatsCard } from './components/StatsCard';
 import { MonthSummary } from './components/MonthSummary';
 import { EntryModal } from './components/EntryModal';
@@ -65,8 +66,8 @@ const getCurrentMonthString = (): string => {
 };
 
 const App: React.FC = () => {
-  const [rawEntries, setRawEntries] = useState<RawFuelEntry[]>([]);
-  const [maintenanceData, setMaintenanceData] = useState<MaintenanceData>({
+  const [localRawEntries, setLocalRawEntries] = useState<RawFuelEntry[]>([]);
+  const [localMaintenanceData, setLocalMaintenanceData] = useState<MaintenanceData>({
     oil: 0,
     tires: 0,
     engine: 0,
@@ -78,8 +79,21 @@ const App: React.FC = () => {
     sparkPlugs: 0,
     timingBelt: 0,
   });
-  const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [favoriteStations, setFavoriteStations] = useState<FavoriteStation[]>([]);
+  const [localReminders, setLocalReminders] = useState<Reminder[]>([]);
+  const [localFavoriteStations, setLocalFavoriteStations] = useState<FavoriteStation[]>([]);
+  
+  const {
+    user, authLoading, signIn, logOut,
+    entries: fbEntries, maintenance: fbMaintenance, reminders: fbReminders, favoriteStations: fbFavoriteStations,
+    saveEntry, removeEntry, saveMaintenance, saveReminder, removeReminder, saveStation, removeStation,
+    migrateLocalData
+  } = useFirebaseSync();
+
+  const rawEntries = user ? fbEntries : localRawEntries;
+  const maintenanceData = user ? fbMaintenance : localMaintenanceData;
+  const reminders = user ? fbReminders : localReminders;
+  const favoriteStations = user ? fbFavoriteStations : localFavoriteStations;
+
   const [activeModal, setActiveModal] = useState<'entry' | 'trip' | 'maintenance' | 'detail' | 'reminders' | 'comparison' | 'prediction' | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<ProcessedFuelEntry | null>(null);
   const [entryToEdit, setEntryToEdit] = useState<RawFuelEntry | null>(null);
@@ -105,29 +119,29 @@ const App: React.FC = () => {
           }
         });
         
-        setRawEntries(parsed);
+        setLocalRawEntries(parsed);
       } else {
-        setRawEntries(getInitialSeedData());
+        setLocalRawEntries(getInitialSeedData());
       }
 
       const storedMaintenance = localStorage.getItem('maintenanceData');
       if (storedMaintenance) {
         try {
           const parsed = JSON.parse(storedMaintenance);
-          setMaintenanceData(prev => ({ ...prev, ...parsed }));
+          setLocalMaintenanceData(prev => ({ ...prev, ...parsed }));
         } catch (e) {
           console.error("Erro ao fazer parse de maintenanceData", e);
         }
       }
 
       const storedReminders = localStorage.getItem('reminders');
-      if (storedReminders) setReminders(JSON.parse(storedReminders));
+      if (storedReminders) setLocalReminders(JSON.parse(storedReminders));
 
       const storedStations = localStorage.getItem('favoriteStations');
       if (storedStations) {
-        setFavoriteStations(JSON.parse(storedStations));
+        setLocalFavoriteStations(JSON.parse(storedStations));
       } else {
-        setFavoriteStations([
+        setLocalFavoriteStations([
           {
             id: 'fs-1',
             name: 'Posto Shell Alvorada',
@@ -150,25 +164,25 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error("Falha ao carregar dados do localStorage", error);
-      setRawEntries(getInitialSeedData());
+      setLocalRawEntries(getInitialSeedData());
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('fuelEntries', JSON.stringify(rawEntries));
-  }, [rawEntries]);
+    localStorage.setItem('fuelEntries', JSON.stringify(localRawEntries));
+  }, [localRawEntries]);
 
   useEffect(() => {
-    localStorage.setItem('maintenanceData', JSON.stringify(maintenanceData));
-  }, [maintenanceData]);
+    localStorage.setItem('maintenanceData', JSON.stringify(localMaintenanceData));
+  }, [localMaintenanceData]);
 
   useEffect(() => {
-    localStorage.setItem('reminders', JSON.stringify(reminders));
-  }, [reminders]);
+    localStorage.setItem('reminders', JSON.stringify(localReminders));
+  }, [localReminders]);
 
   useEffect(() => {
-    localStorage.setItem('favoriteStations', JSON.stringify(favoriteStations));
-  }, [favoriteStations]);
+    localStorage.setItem('favoriteStations', JSON.stringify(localFavoriteStations));
+  }, [localFavoriteStations]);
 
   const processedEntries = useMemo((): ProcessedFuelEntry[] => {
     const sorted = [...rawEntries].sort((a, b) => {
@@ -428,40 +442,75 @@ const App: React.FC = () => {
     setEntryToEdit(null);
   }, []);
 
-  const handleSaveEntry = useCallback((entryData: Omit<RawFuelEntry, 'id'> & { id?: string }) => {
-    setRawEntries(prev => {
-      if (entryData.id) {
-        return prev.map(e => e.id === entryData.id ? { ...e, ...entryData } as RawFuelEntry : e);
+  const handleSaveEntry = useCallback(async (entryData: Omit<RawFuelEntry, 'id'> & { id?: string }) => {
+    const e = { ...entryData, id: entryData.id || Date.now().toString() } as RawFuelEntry;
+    if (user) {
+      await saveEntry(e);
+    } else {
+      setLocalRawEntries(prev => {
+        if (entryData.id) {
+          return prev.map(item => item.id === entryData.id ? e : item);
+        }
+        return [...prev, e];
+      });
+    }
+    handleCloseModal();
+  }, [user, saveEntry, handleCloseModal]);
+
+  const handleDeleteEntry = useCallback(async (id: string) => {
+    if (user) {
+      await removeEntry(id);
+    } else {
+      setLocalRawEntries(prev => prev.filter(e => e.id !== id));
+    }
+    handleCloseModal();
+  }, [user, removeEntry, handleCloseModal]);
+
+  const handleSaveMaintenance = useCallback(async (data: MaintenanceData) => {
+    if (user) {
+      await saveMaintenance(data);
+    } else {
+      setLocalMaintenanceData(data);
+    }
+  }, [user, saveMaintenance]);
+
+  const handleSaveReminders = useCallback(async (newReminders: Reminder[]) => {
+    // For syncing all reminders, we have to find what was added/removed.
+    // Simpler: if they add a single reminder, but here we replace the list.
+    // Let's just iterate and save them all. (This isn't optimal for deletions, but simple enough)
+    if (user) {
+      // Find deleted reminders
+      const deleted = localReminders.filter(old => !newReminders.find(n => n.id === old.id));
+      for (const d of deleted) {
+        await removeReminder(d.id);
       }
-      return [...prev, { ...entryData, id: Date.now().toString() } as RawFuelEntry];
-    });
-    handleCloseModal();
-  }, [handleCloseModal]);
+      for (const r of newReminders) {
+        await saveReminder(r);
+      }
+    } else {
+      setLocalReminders(newReminders);
+    }
+  }, [user, localReminders, saveReminder, removeReminder]);
 
-  const handleDeleteEntry = useCallback((id: string) => {
-    setRawEntries(prev => prev.filter(e => e.id !== id));
-    handleCloseModal();
-  }, [handleCloseModal]);
-
-  const handleSaveMaintenance = useCallback((data: MaintenanceData) => {
-    setMaintenanceData(data);
-  }, []);
-
-  const handleSaveReminders = useCallback((newReminders: Reminder[]) => {
-    setReminders(newReminders);
-  }, []);
-
-  const handleAddStation = useCallback((newStation: Omit<FavoriteStation, 'id'>) => {
+  const handleAddStation = useCallback(async (newStation: Omit<FavoriteStation, 'id'>) => {
     const stationWithId: FavoriteStation = {
       ...newStation,
       id: `station-${Date.now()}`
     };
-    setFavoriteStations(prev => [...prev, stationWithId]);
-  }, []);
+    if (user) {
+      await saveStation(stationWithId);
+    } else {
+      setLocalFavoriteStations(prev => [...prev, stationWithId]);
+    }
+  }, [user, saveStation]);
 
-  const handleDeleteStation = useCallback((id: string) => {
-    setFavoriteStations(prev => prev.filter(s => s.id !== id));
-  }, []);
+  const handleDeleteStation = useCallback(async (id: string) => {
+    if (user) {
+      await removeStation(id);
+    } else {
+      setLocalFavoriteStations(prev => prev.filter(s => s.id !== id));
+    }
+  }, [user, removeStation]);
 
   const handleExportCSV = useCallback(() => {
     if (rawEntries.length === 0) {
@@ -552,11 +601,49 @@ const App: React.FC = () => {
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-2 p-1 rounded-full bg-white/5 border border-white/10 hover:border-gasolina/30 transition-all duration-300"
+            className="flex items-center gap-3"
           >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-gasolina to-etanol flex items-center justify-center shadow-[0_0_12px_rgba(255,255,255,0.15)]">
-              <UserIcon size={16} className="text-white" />
-            </div>
+            {!authLoading && user && localRawEntries.length > 0 && (
+              <button 
+                onClick={async () => {
+                  await migrateLocalData(localRawEntries, localMaintenanceData, localReminders, localFavoriteStations);
+                  setLocalRawEntries([]);
+                  setLocalReminders([]);
+                  setLocalFavoriteStations([]);
+                  localStorage.removeItem('maintenanceData');
+                  localStorage.removeItem('favoriteStations');
+                  localStorage.removeItem('fuelEntries');
+                  localStorage.removeItem('reminders');
+                  alert("Dados migrados para a nuvem com sucesso!");
+                }}
+                className="text-[9px] uppercase font-bold bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-500/30 hover:bg-emerald-500/30 transition-all flex items-center gap-1"
+                title="Sincronizar dados antigos para a conta"
+              >
+                Migrar Dados Locais
+              </button>
+            )}
+            
+            {!authLoading && (
+              <div 
+                onClick={user ? logOut : signIn}
+                className="flex items-center gap-2 p-1.5 pr-3 rounded-full bg-black/40 border border-white/10 hover:border-gasolina/30 cursor-pointer transition-all duration-300"
+                title={user ? "Sair da conta" : "Fazer login para backup na nuvem"}
+              >
+                {user ? (
+                  <>
+                    <img src={user.photoURL || ''} alt="User" className="w-7 h-7 rounded-full border border-gasolina/50" />
+                    <span className="text-[10px] font-bold text-gray-300 hidden md:block">{user.displayName?.split(' ')[0]}</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-gray-700 to-gray-500 flex items-center justify-center shadow-[0_0_12px_rgba(255,255,255,0.05)]">
+                      <UserIcon size={14} className="text-white" />
+                    </div>
+                    <span className="text-[10px] font-bold text-gray-300 hidden md:block">Login / Nuvem</span>
+                  </>
+                )}
+              </div>
+            )}
           </motion.div>
         </div>
       </header>

@@ -1,0 +1,42 @@
+{
+  "__description__": "Schema for Meu Combustível app.",
+  "users": {
+    "__doc__": "Document ID is the Firebase Auth UID. Stores user-specific settings.",
+    "maintenance": {
+      "__doc__": "Singleton document for maintenance data. ID is 'current'.",
+      "currentMileage": 150000,
+      "oilChangeInterval": 10000,
+      "oilChange": 140000,
+      "timingBeltInterval": 50000,
+      "timingBelt": 100000
+    },
+    "entries": {
+      "__doc__": "Collection of fuel entries for this user. Document ID is auto-generated.",
+      "date": "2023-10-01T12:00:00Z",
+      "fuelType": "Gasolina",
+      "pricePerLiter": 5.59,
+      "totalValue": 100,
+      "mileage": 150000,
+      "fullTank": true
+    },
+    "reminders": {
+      "__doc__": "Collection of maintenance reminders. Document ID is auto-generated.",
+      "title": "Trocar óleo",
+      "targetKm": 150000,
+      "targetDate": "2023-10-01T12:00:00Z",
+      "type": "oil",
+      "completed": false,
+      "lastCompletionKm": 140000,
+      "lastCompletionDate": "2023-01-01T12:00:00Z"
+    },
+    "favoriteStations": {
+      "__doc__": "Collection of favorite gas stations. Document ID is auto-generated.",
+      "name": "Posto Shell Alvorada",
+      "brand": "Shell",
+      "rating": 5,
+      "bestFuel": "Gasolina",
+      "notes": "Gasolina V-Power",
+      "city": "Vila Mariana"
+    }
+  }
+}
