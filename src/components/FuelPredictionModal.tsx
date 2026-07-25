@@ -15,9 +15,9 @@ export const FuelPredictionModal: React.FC<FuelPredictionModalProps> = ({
   avgKmplGas = 12.5,
   avgKmplEth = 8.5
 }) => {
-  const [amount, setAmount] = useState('50.00');
-  const [etanolPrice, setEtanolPrice] = useState('4.99');
-  const [gasolinaPrice, setGasolinaPrice] = useState('6.69');
+  const [amount, setAmount] = useState('100');
+  const [etanolPrice, setEtanolPrice] = useState('4.79');
+  const [gasolinaPrice, setGasolinaPrice] = useState('6.59');
 
   const money = parseFloat(amount) || 0;
   const ethPrice = parseFloat(etanolPrice) || 0;
@@ -79,9 +79,10 @@ export const FuelPredictionModal: React.FC<FuelPredictionModalProps> = ({
                     type="number"
                     step="5"
                     value={amount}
+                    onFocus={e => e.target.select()}
                     onChange={e => setAmount(e.target.value)}
                     className="input-field w-full font-mono text-lg py-3"
-                    placeholder="50,00"
+                    placeholder="100,00"
                   />
                 </div>
                 
@@ -92,9 +93,10 @@ export const FuelPredictionModal: React.FC<FuelPredictionModalProps> = ({
                       type="number"
                       step="0.01"
                       value={etanolPrice}
+                      onFocus={e => e.target.select()}
                       onChange={e => setEtanolPrice(e.target.value)}
                       className="input-field w-full font-mono"
-                      placeholder="4,99"
+                      placeholder="4,79"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -103,9 +105,10 @@ export const FuelPredictionModal: React.FC<FuelPredictionModalProps> = ({
                       type="number"
                       step="0.01"
                       value={gasolinaPrice}
+                      onFocus={e => e.target.select()}
                       onChange={e => setGasolinaPrice(e.target.value)}
                       className="input-field w-full font-mono"
-                      placeholder="6,69"
+                      placeholder="6,59"
                     />
                   </div>
                 </div>

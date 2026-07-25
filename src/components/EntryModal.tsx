@@ -14,8 +14,8 @@ interface EntryModalProps {
 export const EntryModal: React.FC<EntryModalProps> = ({ isOpen, onClose, onSave, entryToEdit, lastKm }) => {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
-    totalValue: '',
-    pricePerLiter: '',
+    totalValue: '100',
+    pricePerLiter: '6.59',
     kmEnd: '',
     fuelType: FuelType.GASOLINE,
     notes: '',
@@ -38,13 +38,29 @@ export const EntryModal: React.FC<EntryModalProps> = ({ isOpen, onClose, onSave,
         isFull: entryToEdit.isFull !== false
       });
     } else {
-      setFormData(prev => ({ 
-        ...prev, 
+      setFormData({ 
+        date: new Date().toISOString().split('T')[0],
+        totalValue: '100',
+        pricePerLiter: '6.59',
         kmEnd: lastKm > 0 ? lastKm.toString() : '',
+        fuelType: FuelType.GASOLINE,
+        notes: '',
         isFull: true
-      }));
+      });
     }
-  }, [entryToEdit, lastKm]);
+  }, [entryToEdit, lastKm, isOpen]);
+
+  const handleFuelTypeChange = (newType: FuelType) => {
+    let price = formData.pricePerLiter;
+    if (!price || ['6.59', '6.69', '4.79', '4.99'].includes(price)) {
+      price = newType === FuelType.ETHANOL ? '4.79' : '6.59';
+    }
+    setFormData(prev => ({
+      ...prev,
+      fuelType: newType,
+      pricePerLiter: price
+    }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,7 +121,7 @@ export const EntryModal: React.FC<EntryModalProps> = ({ isOpen, onClose, onSave,
                   <select
                     className="input-field w-full"
                     value={formData.fuelType}
-                    onChange={e => setFormData({ ...formData, fuelType: e.target.value as FuelType })}
+                    onChange={e => handleFuelTypeChange(e.target.value as FuelType)}
                   >
                     {Object.values(FuelType).map(type => (
                       <option key={type} value={type}>{type}</option>
@@ -121,9 +137,10 @@ export const EntryModal: React.FC<EntryModalProps> = ({ isOpen, onClose, onSave,
                     type="number"
                     step="0.01"
                     required
-                    placeholder="0,00"
+                    placeholder="100,00"
                     className="input-field w-full font-mono"
                     value={formData.totalValue}
+                    onFocus={e => e.target.select()}
                     onChange={e => setFormData({ ...formData, totalValue: e.target.value })}
                   />
                 </div>
@@ -136,6 +153,7 @@ export const EntryModal: React.FC<EntryModalProps> = ({ isOpen, onClose, onSave,
                     placeholder="0,000"
                     className="input-field w-full font-mono"
                     value={formData.pricePerLiter}
+                    onFocus={e => e.target.select()}
                     onChange={e => setFormData({ ...formData, pricePerLiter: e.target.value })}
                   />
                 </div>
@@ -149,6 +167,7 @@ export const EntryModal: React.FC<EntryModalProps> = ({ isOpen, onClose, onSave,
                   placeholder={`Último: ${lastKm} KM`}
                   className="input-field w-full font-mono"
                   value={formData.kmEnd}
+                  onFocus={e => e.target.select()}
                   onChange={e => setFormData({ ...formData, kmEnd: e.target.value })}
                 />
               </div>
