@@ -227,12 +227,18 @@ const App: React.FC = () => {
           }
 
           if (totalDistance > 0 && totalLiters > 0) {
-            avgKmpl = totalDistance / totalLiters;
+            const calculated = totalDistance / totalLiters;
+            if (calculated >= 3 && calculated <= 35) {
+              avgKmpl = calculated;
+            }
           }
         } else {
           // First full tank or no previous full tank. Fallback to backward segment average.
           if (prevEntry && distance > 0 && liters > 0) {
-            avgKmpl = distance / liters;
+            const calculated = distance / liters;
+            if (calculated >= 3 && calculated <= 35) {
+              avgKmpl = calculated;
+            }
           }
         }
       } else {
@@ -268,7 +274,10 @@ const App: React.FC = () => {
           }
 
           if (nextDistance > 0 && nextLiters > 0) {
-            avgKmplReal = nextDistance / nextLiters;
+            const calculatedReal = nextDistance / nextLiters;
+            if (calculatedReal >= 3 && calculatedReal <= 35) {
+              avgKmplReal = calculatedReal;
+            }
           }
         }
       }
@@ -293,19 +302,30 @@ const App: React.FC = () => {
   }, [rawEntries]);
 
   const fuelAverages = useMemo(() => {
-    const gasEntries = processedEntries.filter(e => ((e.avgKmplReal && e.avgKmplReal > 0) || e.avgKmpl > 0) && e.fuelType === FuelType.GASOLINE);
-    const ethEntries = processedEntries.filter(e => ((e.avgKmplReal && e.avgKmplReal > 0) || e.avgKmpl > 0) && e.fuelType === FuelType.ETHANOL);
-    
     const getEffectiveKmpl = (e: ProcessedFuelEntry) => e.avgKmplReal && e.avgKmplReal > 0 ? e.avgKmplReal : e.avgKmpl;
-    
-    const gasAvg = gasEntries.length > 0 
-      ? gasEntries.reduce((sum, e) => sum + getEffectiveKmpl(e), 0) / gasEntries.length 
+
+    const validGasKmpl = processedEntries
+      .filter(e => e.fuelType === FuelType.GASOLINE)
+      .map(getEffectiveKmpl)
+      .filter(kmpl => kmpl >= 4 && kmpl <= 25);
+
+    const validEthKmpl = processedEntries
+      .filter(e => e.fuelType === FuelType.ETHANOL)
+      .map(getEffectiveKmpl)
+      .filter(kmpl => kmpl >= 3 && kmpl <= 18);
+
+    const gasAvgRaw = validGasKmpl.length > 0 
+      ? validGasKmpl.reduce((sum, k) => sum + k, 0) / validGasKmpl.length 
       : 12.5;
-    const ethAvg = ethEntries.length > 0 
-      ? ethEntries.reduce((sum, e) => sum + getEffectiveKmpl(e), 0) / ethEntries.length 
+
+    const ethAvgRaw = validEthKmpl.length > 0 
+      ? validEthKmpl.reduce((sum, k) => sum + k, 0) / validEthKmpl.length 
       : 8.5;
-      
-    return { gasAvg, ethAvg };
+
+    return { 
+      gasAvg: Number(gasAvgRaw.toFixed(1)), 
+      ethAvg: Number(ethAvgRaw.toFixed(1)) 
+    };
   }, [processedEntries]);
 
   const filteredEntries = useMemo(() => {

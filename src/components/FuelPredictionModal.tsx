@@ -153,7 +153,7 @@ export const FuelPredictionModal: React.FC<FuelPredictionModalProps> = ({
 
               <div className="p-4 bg-white/5 rounded-xl border border-white/10">
                 <p className="text-[10px] text-gray-400 text-center leading-relaxed">
-                  * Estimativa baseada no seu histórico ou médias nacionais ({avgKmplEth} km/L etanol e {avgKmplGas} km/L gasolina).
+                  * Estimativa baseada no seu histórico ou médias nacionais ({Number(avgKmplEth).toFixed(1)} km/L etanol e {Number(avgKmplGas).toFixed(1)} km/L gasolina).
                 </p>
               </div>
 
