@@ -1,17 +1,67 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, useAnimation } from 'motion/react';
 
+export type CardColorScheme = 'green' | 'red' | 'blue' | 'yellow' | 'purple' | 'cyan';
+
 interface StatsCardProps {
   icon: React.ReactNode;
   label: string;
   value: string;
   pulseTrigger?: number;
+  colorScheme?: CardColorScheme;
 }
 
-export const StatsCard: React.FC<StatsCardProps> = ({ icon, label, value, pulseTrigger }) => {
+const colorStyles: Record<CardColorScheme, { bg: string; border: string; glow: string; dot: string }> = {
+  green: {
+    bg: 'bg-emerald-950/35 hover:bg-emerald-900/40',
+    border: 'border-emerald-500/25 hover:border-emerald-500/45',
+    glow: 'bg-emerald-500',
+    dot: 'bg-emerald-400',
+  },
+  red: {
+    bg: 'bg-rose-950/35 hover:bg-rose-900/40',
+    border: 'border-rose-500/25 hover:border-rose-500/45',
+    glow: 'bg-rose-500',
+    dot: 'bg-rose-400',
+  },
+  blue: {
+    bg: 'bg-sky-950/35 hover:bg-sky-900/40',
+    border: 'border-sky-500/25 hover:border-sky-500/45',
+    glow: 'bg-sky-500',
+    dot: 'bg-sky-400',
+  },
+  yellow: {
+    bg: 'bg-amber-950/35 hover:bg-amber-900/40',
+    border: 'border-amber-500/25 hover:border-amber-500/45',
+    glow: 'bg-amber-500',
+    dot: 'bg-amber-400',
+  },
+  purple: {
+    bg: 'bg-purple-950/35 hover:bg-purple-900/40',
+    border: 'border-purple-500/25 hover:border-purple-500/45',
+    glow: 'bg-purple-500',
+    dot: 'bg-purple-400',
+  },
+  cyan: {
+    bg: 'bg-teal-950/35 hover:bg-teal-900/40',
+    border: 'border-teal-500/25 hover:border-teal-500/45',
+    glow: 'bg-teal-500',
+    dot: 'bg-teal-400',
+  },
+};
+
+export const StatsCard: React.FC<StatsCardProps> = ({ 
+  icon, 
+  label, 
+  value, 
+  pulseTrigger,
+  colorScheme = 'blue'
+}) => {
   const controls = useAnimation();
   const isFirstRender = useRef(true);
   const [shouldAnimateGlow, setShouldAnimateGlow] = useState(false);
+
+  const style = colorStyles[colorScheme] || colorStyles.blue;
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -36,23 +86,23 @@ export const StatsCard: React.FC<StatsCardProps> = ({ icon, label, value, pulseT
 
   return (
     <motion.div animate={controls} className="w-full h-full">
-      <div className="glass-card p-4 flex flex-col gap-2 group hover:bg-white/10 transition-all duration-300 h-full relative overflow-hidden">
+      <div className={`p-4 flex flex-col gap-2 rounded-2xl border backdrop-blur-md transition-all duration-300 h-full relative overflow-hidden shadow-lg ${style.bg} ${style.border}`}>
         {shouldAnimateGlow && (
           <motion.div
             initial={{ opacity: 0, scale: 0.5 }}
             animate={{ opacity: [0, 0.2, 0], scale: [0.5, 1.6, 2.5] }}
             transition={{ duration: 1.2, ease: 'easeOut' }}
-            className="absolute inset-0 bg-emerald-500 rounded-full blur-3xl pointer-events-none"
+            className={`absolute inset-0 ${style.glow} rounded-full blur-3xl pointer-events-none`}
             style={{ originX: 0.5, originY: 0.5 }}
           />
         )}
         <div className="flex items-center justify-between relative z-10">
-          <div className="text-xl opacity-80 group-hover:opacity-100 transition-opacity">{icon}</div>
-          <div className="w-1 h-1 rounded-full bg-white/20"></div>
+          <div className="text-xl">{icon}</div>
+          <div className={`w-1.5 h-1.5 rounded-full ${style.dot} opacity-70`}></div>
         </div>
         <div className="relative z-10">
-          <p className="text-[10px] text-gray-400 uppercase font-bold tracking-[0.1em] mb-1">{label}</p>
-          <p className="text-xl font-display font-bold text-white tracking-tight">{value}</p>
+          <p className="text-[10px] text-gray-400 uppercase font-black tracking-wider mb-1 font-display">{label}</p>
+          <p className="text-xl font-display font-extrabold text-white tracking-tight leading-tight">{value}</p>
         </div>
       </div>
     </motion.div>

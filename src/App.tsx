@@ -17,6 +17,7 @@ import { RemindersModal } from './components/RemindersModal';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { FuelComparisonModal } from './components/FuelComparisonModal';
 import { FuelPredictionModal } from './components/FuelPredictionModal';
+import { CloudSyncModal } from './components/CloudSyncModal';
 import { DrivingTips } from './components/DrivingTips';
 import { FuelMarketIndex } from './components/FuelMarketIndex';
 import { FavoriteStations } from './components/FavoriteStations';
@@ -55,6 +56,7 @@ const getInitialSeedData = (): RawFuelEntry[] => {
     { id: 'm4', date: new Date('2026-05-16T15:00:00Z'), totalValue: 208.17, pricePerLiter: 6.69, kmEnd: 145714, fuelType: FuelType.GASOLINE, notes: '' },
     { id: 'm5', date: new Date('2026-05-26T12:00:00Z'), totalValue: 309.30, pricePerLiter: 6.39, kmEnd: 145970, fuelType: FuelType.GASOLINE, notes: '' },
     { id: 'm6', date: new Date('2026-05-30T12:00:00Z'), totalValue: 113.70, pricePerLiter: 6.43, kmEnd: 145970, fuelType: FuelType.GASOLINE, notes: '' },
+    { id: '11', date: new Date('2026-07-25T19:21:00Z'), totalValue: 50.00, pricePerLiter: 6.59, kmEnd: 149088, fuelType: FuelType.GASOLINE, notes: 'Posto ipiranga do queijão' },
   ];
 };
 
@@ -83,48 +85,58 @@ const App: React.FC = () => {
   const [localFavoriteStations, setLocalFavoriteStations] = useState<FavoriteStation[]>([]);
   
   const {
-    user, authLoading, signIn, logOut,
-    entries: fbEntries, maintenance: fbMaintenance, reminders: fbReminders, favoriteStations: fbFavoriteStations,
-    saveEntry, removeEntry, saveMaintenance, saveReminder, removeReminder, saveStation, removeStation,
+    user, 
+    authLoading, 
+    isOnline,
+    syncStatus,
+    signIn, 
+    logOut,
+    entries: fbEntries, 
+    maintenance: fbMaintenance, 
+    reminders: fbReminders, 
+    favoriteStations: fbFavoriteStations,
+    saveEntry, 
+    removeEntry, 
+    saveMaintenance, 
+    saveReminder, 
+    removeReminder, 
+    saveStation, 
+    removeStation,
     migrateLocalData
   } = useFirebaseSync();
 
-  const rawEntries = user ? fbEntries : localRawEntries;
-  const maintenanceData = user ? fbMaintenance : localMaintenanceData;
-  const reminders = user ? fbReminders : localReminders;
-  const favoriteStations = user ? fbFavoriteStations : localFavoriteStations;
+  const rawEntries = user ? (fbEntries.length > 0 ? fbEntries : localRawEntries) : localRawEntries;
+  const maintenanceData = user ? (fbMaintenance ? fbMaintenance : localMaintenanceData) : localMaintenanceData;
+  const reminders = user ? (fbReminders.length > 0 ? fbReminders : localReminders) : localReminders;
+  const favoriteStations = user ? (fbFavoriteStations.length > 0 ? fbFavoriteStations : localFavoriteStations) : localFavoriteStations;
 
-  const [activeModal, setActiveModal] = useState<'entry' | 'trip' | 'maintenance' | 'detail' | 'reminders' | 'comparison' | 'prediction' | null>(null);
+  const [activeModal, setActiveModal] = useState<'entry' | 'trip' | 'maintenance' | 'detail' | 'reminders' | 'comparison' | 'prediction' | 'sync' | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<ProcessedFuelEntry | null>(null);
   const [entryToEdit, setEntryToEdit] = useState<RawFuelEntry | null>(null);
-  const [monthFilter, setMonthFilter] = useState<string>('2026-05');
+  const [monthFilter, setMonthFilter] = useState<string>(() => getCurrentMonthString());
 
   useEffect(() => {
     try {
-      const storedEntries = localStorage.getItem('fuelEntries');
+      const storedEntries = localStorage.getItem('fuelEntries') || localStorage.getItem('cached_cloud_entries');
       if (storedEntries) {
         const parsed = JSON.parse(storedEntries).map((e: any) => ({
           ...e,
           date: new Date(e.date),
         }));
         
-        // Ensure the newly recorded item is present
+        // Ensure latest 149088km item is present if not already added
         const seedData = getInitialSeedData();
-        const manuallyAddedIds = ['9', '10', 'm1', 'm2', 'm3', 'm4', 'm5', 'm6'];
-        
-        manuallyAddedIds.forEach(id => {
-          if (!parsed.some((e: any) => e.id === id)) {
-            const entry = seedData.find(e => e.id === id);
-            if (entry) parsed.push(entry);
-          }
-        });
+        const latestSeed = seedData.find(e => e.id === '11');
+        if (latestSeed && !parsed.some((e: any) => e.kmEnd >= 149088 || e.id === '11')) {
+          parsed.push(latestSeed);
+        }
         
         setLocalRawEntries(parsed);
       } else {
         setLocalRawEntries(getInitialSeedData());
       }
 
-      const storedMaintenance = localStorage.getItem('maintenanceData');
+      const storedMaintenance = localStorage.getItem('maintenanceData') || localStorage.getItem('cached_cloud_maintenance');
       if (storedMaintenance) {
         try {
           const parsed = JSON.parse(storedMaintenance);
@@ -134,10 +146,10 @@ const App: React.FC = () => {
         }
       }
 
-      const storedReminders = localStorage.getItem('reminders');
+      const storedReminders = localStorage.getItem('reminders') || localStorage.getItem('cached_cloud_reminders');
       if (storedReminders) setLocalReminders(JSON.parse(storedReminders));
 
-      const storedStations = localStorage.getItem('favoriteStations');
+      const storedStations = localStorage.getItem('favoriteStations') || localStorage.getItem('cached_cloud_stations');
       if (storedStations) {
         setLocalFavoriteStations(JSON.parse(storedStations));
       } else {
@@ -153,12 +165,12 @@ const App: React.FC = () => {
           },
           {
             id: 'fs-2',
-            name: 'Posto Ipiranga RodoCentro',
+            name: 'Posto Ipiranga do Queijão',
             brand: 'Ipiranga',
-            rating: 4,
-            bestFuel: FuelType.ETHANOL,
-            notes: 'Etanol sempre com excelente preço às quartas-feiras. Combustível limpo e aferido.',
-            city: 'Centro'
+            rating: 5,
+            bestFuel: FuelType.GASOLINE,
+            notes: 'Gasolina comum excelente e preço competitivo.',
+            city: 'Rodovia'
           }
         ]);
       }
@@ -168,8 +180,17 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // When user logs in with existing cloud data or local data, auto-sync if cloud is empty
   useEffect(() => {
-    localStorage.setItem('fuelEntries', JSON.stringify(localRawEntries));
+    if (user && !authLoading && fbEntries.length === 0 && localRawEntries.length > 0) {
+      migrateLocalData(localRawEntries, localMaintenanceData, localReminders, localFavoriteStations);
+    }
+  }, [user, authLoading, fbEntries.length, localRawEntries.length]);
+
+  useEffect(() => {
+    if (localRawEntries.length > 0) {
+      localStorage.setItem('fuelEntries', JSON.stringify(localRawEntries));
+    }
   }, [localRawEntries]);
 
   useEffect(() => {
@@ -464,35 +485,55 @@ const App: React.FC = () => {
 
   const handleSaveEntry = useCallback(async (entryData: Omit<RawFuelEntry, 'id'> & { id?: string }) => {
     const e = { ...entryData, id: entryData.id || Date.now().toString() } as RawFuelEntry;
+    setLocalRawEntries(prev => {
+      if (entryData.id) {
+        return prev.map(item => item.id === entryData.id ? e : item);
+      }
+      return [...prev, e];
+    });
     if (user) {
       await saveEntry(e);
-    } else {
-      setLocalRawEntries(prev => {
-        if (entryData.id) {
-          return prev.map(item => item.id === entryData.id ? e : item);
-        }
-        return [...prev, e];
-      });
     }
     handleCloseModal();
   }, [user, saveEntry, handleCloseModal]);
 
   const handleDeleteEntry = useCallback(async (id: string) => {
+    setLocalRawEntries(prev => prev.filter(e => e.id !== id));
     if (user) {
       await removeEntry(id);
-    } else {
-      setLocalRawEntries(prev => prev.filter(e => e.id !== id));
     }
     handleCloseModal();
   }, [user, removeEntry, handleCloseModal]);
 
   const handleSaveMaintenance = useCallback(async (data: MaintenanceData) => {
+    setLocalMaintenanceData(data);
     if (user) {
       await saveMaintenance(data);
-    } else {
-      setLocalMaintenanceData(data);
     }
   }, [user, saveMaintenance]);
+
+  const handleImportJSON = useCallback(async (data: {
+    entries: RawFuelEntry[];
+    maintenance: MaintenanceData;
+    reminders: Reminder[];
+    favoriteStations: FavoriteStation[];
+  }) => {
+    setLocalRawEntries(data.entries);
+    setLocalMaintenanceData(data.maintenance);
+    setLocalReminders(data.reminders);
+    setLocalFavoriteStations(data.favoriteStations);
+    if (user) {
+      await migrateLocalData(data.entries, data.maintenance, data.reminders, data.favoriteStations);
+    }
+  }, [user, migrateLocalData]);
+
+  const handleForceSyncCloud = useCallback(async () => {
+    if (user) {
+      await migrateLocalData(rawEntries, maintenanceData, reminders, favoriteStations);
+    } else {
+      await signIn();
+    }
+  }, [user, rawEntries, maintenanceData, reminders, favoriteStations, migrateLocalData, signIn]);
 
   const handleSaveReminders = useCallback(async (newReminders: Reminder[]) => {
     // For syncing all reminders, we have to find what was added/removed.
@@ -597,80 +638,52 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="bg-[#020205] text-gray-200 min-h-screen font-sans selection:bg-gasolina/30 tech-grid-bg relative overflow-x-hidden">
-      {/* Laser Top Glow Accent Strip */}
-      <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-gasolina via-[#cc2424] to-etanol z-50"></div>
+    <div className="bg-[#1a1d24] text-gray-100 min-h-screen font-sans selection:bg-red-500/30 relative overflow-x-hidden">
+      {/* Top Accent Strip */}
+      <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-red-600 via-amber-500 to-emerald-500 z-50"></div>
 
-      <header className="bg-gradient-to-b from-gasolina/30 via-slate-950/98 to-[#020205] backdrop-blur-2xl p-5 sticky top-0 z-30 border-b border-gasolina/30 shadow-[0_12px_45px_rgba(153,27,27,0.22)]">
+      <header className="bg-slate-900/85 backdrop-blur-2xl p-5 sticky top-0 z-30 border-b border-white/10 shadow-lg">
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-3.5"
           >
-            <div className="p-2.5 bg-gasolina/20 rounded-xl border border-gasolina/50 shadow-[0_0_20px_rgba(153,27,27,0.4)] transition-all duration-300">
-              <FuelPumpIcon size={24} className="text-gasolina animate-pulse" />
+            <div className="p-2.5 bg-red-600/20 rounded-xl border border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.3)] transition-all duration-300">
+              <FuelPumpIcon size={24} className="text-red-500 animate-pulse" />
             </div>
             <div>
-              <h1 className="text-xl md:text-2xl font-black text-white tracking-widest font-display neon-text-glow leading-none bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-white/90">
+              <h1 className="text-xl md:text-2xl font-black text-white tracking-wider font-display leading-none">
                 MEU COMBUSTÍVEL
               </h1>
-              <p className="text-[8px] text-gray-400 tracking-[0.25em] font-bold uppercase mt-1.5 pl-0.5">SISTEMA INTELIGENTE 2026</p>
+              <p className="text-[9px] text-gray-400 tracking-[0.2em] font-extrabold uppercase mt-1 pl-0.5">SISTEMA INTELIGENTE 2026</p>
             </div>
           </motion.div>
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-3"
+            className="flex items-center"
           >
-            {!authLoading && user && localRawEntries.length > 0 && (
-              <button 
-                onClick={async () => {
-                  await migrateLocalData(localRawEntries, localMaintenanceData, localReminders, localFavoriteStations);
-                  setLocalRawEntries([]);
-                  setLocalReminders([]);
-                  setLocalFavoriteStations([]);
-                  localStorage.removeItem('maintenanceData');
-                  localStorage.removeItem('favoriteStations');
-                  localStorage.removeItem('fuelEntries');
-                  localStorage.removeItem('reminders');
-                  alert("Dados migrados para a nuvem com sucesso!");
-                }}
-                className="text-[9px] uppercase font-bold bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-500/30 hover:bg-emerald-500/30 transition-all flex items-center gap-1"
-                title="Sincronizar dados antigos para a conta"
-              >
-                Migrar Dados Locais
-              </button>
-            )}
-            
-            {!authLoading && (
-              <div 
-                onClick={user ? logOut : signIn}
-                className="flex items-center gap-2 p-1.5 pr-3 rounded-full bg-black/40 border border-white/10 hover:border-gasolina/30 cursor-pointer transition-all duration-300"
-                title={user ? "Sair da conta" : "Fazer login para backup na nuvem"}
-              >
-                {user ? (
-                  <>
-                    <img src={user.photoURL || ''} alt="User" className="w-7 h-7 rounded-full border border-gasolina/50" />
-                    <span className="text-[10px] font-bold text-gray-300 hidden md:block">{user.displayName?.split(' ')[0]}</span>
-                  </>
-                ) : (
-                  <>
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-gray-700 to-gray-500 flex items-center justify-center shadow-[0_0_12px_rgba(255,255,255,0.05)]">
-                      <UserIcon size={14} className="text-white" />
-                    </div>
-                    <span className="text-[10px] font-bold text-gray-300 hidden md:block">Login / Nuvem</span>
-                  </>
-                )}
-              </div>
-            )}
+            <button 
+              onClick={() => setActiveModal('sync')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-md ${
+                user 
+                  ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/60 shadow-emerald-950/40' 
+                  : 'bg-amber-950/50 border-amber-500/40 text-amber-200 hover:bg-amber-900/60 shadow-amber-950/40'
+              }`}
+              title="Gerenciar Sincronização & Backup"
+            >
+              <div className={`w-2 h-2 rounded-full ${user ? (isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400') : 'bg-amber-400 animate-ping'}`} />
+              <span className="hidden sm:inline">{user ? (isOnline ? 'Nuvem Conectada' : 'Modo Offline') : 'Salvar na Nuvem'}</span>
+              <span className="sm:hidden">{user ? 'Nuvem' : 'Salvar'}</span>
+            </button>
           </motion.div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto p-4 pb-24 space-y-10">
         
-        {/* SEÇÃO 1: PAINEL DE CONTROLE (INDICADORES) */}
+        {/* SEÇÃO 1: PAINEL DE CONTROLE (INDICADORES COM CORES SUAVES) */}
         <motion.section 
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -679,28 +692,37 @@ const App: React.FC = () => {
           className="space-y-4"
         >
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-black text-gasolina uppercase tracking-[0.25em] font-display">Painel de Controle</h2>
-            <div className="h-[2px] flex-grow mx-4 bg-gradient-to-r from-gasolina/35 to-transparent"></div>
+            <h2 className="text-xs font-black text-emerald-400 uppercase tracking-[0.25em] font-display">Painel de Controle</h2>
+            <div className="h-[2px] flex-grow mx-4 bg-gradient-to-r from-emerald-500/40 to-transparent"></div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <StatsCard icon={<RoadIcon className="text-etanol" />} label="KM Atual" value={currentMileage.toLocaleString('pt-BR')} pulseTrigger={currentMileage} />
             <StatsCard 
-              icon={<DollarSignIcon className="text-gasolina" />} 
+              icon={<RoadIcon className="text-emerald-400" />} 
+              label="KM Atual" 
+              value={currentMileage.toLocaleString('pt-BR')} 
+              pulseTrigger={currentMileage}
+              colorScheme="green"
+            />
+            <StatsCard 
+              icon={<DollarSignIcon className="text-rose-400" />} 
               label={monthFilter === 'all' ? 'Gasto Total' : 'Gasto no Mês'} 
               value={`R$ ${displayStats.totalSpent.toFixed(2)}`} 
               pulseTrigger={currentMileage}
+              colorScheme="red"
             />
             <StatsCard 
-              icon={<GaugeIcon className="text-gnv" />} 
+              icon={<GaugeIcon className="text-sky-400" />} 
               label={monthFilter === 'all' ? 'Distância Total' : 'Distância no Mês'} 
               value={`${displayStats.totalDistance.toFixed(0)} km`} 
               pulseTrigger={currentMileage}
+              colorScheme="blue"
             />
             <StatsCard 
-              icon={<GaugeIcon className="text-diesel" />} 
+              icon={<GaugeIcon className="text-amber-400" />} 
               label={monthFilter === 'all' ? 'Média Geral' : 'Média no Mês'} 
               value={`${displayStats.averageKmpl.toFixed(1)} km/L`} 
               pulseTrigger={currentMileage}
+              colorScheme="yellow"
             />
           </div>
         </motion.section>
@@ -715,8 +737,8 @@ const App: React.FC = () => {
               className="space-y-4"
             >
               <div className="flex items-center gap-2">
-                <BellIcon size={16} className="text-diesel animate-bounce" />
-                <h2 className="text-xs font-black text-diesel uppercase tracking-[0.25em] font-display">Alertas Operacionais</h2>
+                <BellIcon size={16} className="text-amber-400 animate-bounce" />
+                <h2 className="text-xs font-black text-amber-400 uppercase tracking-[0.25em] font-display">Alertas Operacionais</h2>
               </div>
               <div className="grid gap-3">
                 {maintenanceReminders.map(reminder => (
@@ -725,16 +747,18 @@ const App: React.FC = () => {
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                     onClick={() => setActiveModal('maintenance')}
-                    className={`w-full text-left p-4 rounded-2xl flex items-center gap-4 transition-all border ${
-                      reminder.status === 'warning' ? 'bg-diesel/5 border-diesel/30 hover:bg-diesel/10' : 'bg-gasolina/5 border-gasolina/30 hover:bg-gasolina/10'
+                    className={`w-full text-left p-4 rounded-2xl flex items-center gap-4 transition-all border shadow-sm ${
+                      reminder.status === 'warning' 
+                        ? 'bg-amber-950/35 border-amber-500/30 hover:bg-amber-900/45' 
+                        : 'bg-rose-950/35 border-rose-500/30 hover:bg-rose-900/45'
                     }`}
                   >
-                    <div className={`p-3 rounded-xl ${reminder.status === 'warning' ? 'bg-diesel/20' : 'bg-gasolina/20'}`}>
-                      <WrenchIcon size={20} className={reminder.status === 'warning' ? 'text-diesel' : 'text-gasolina'} />
+                    <div className={`p-3 rounded-xl ${reminder.status === 'warning' ? 'bg-amber-500/20' : 'bg-rose-500/20'}`}>
+                      <WrenchIcon size={20} className={reminder.status === 'warning' ? 'text-amber-300' : 'text-rose-300'} />
                     </div>
                     <div>
-                      <p className={`font-black ${reminder.status === 'warning' ? 'text-diesel' : 'text-gasolina'}`}>{reminder.name}</p>
-                      <p className="text-xs text-gray-400 font-mono">{reminder.message}</p>
+                      <p className={`font-black ${reminder.status === 'warning' ? 'text-amber-300' : 'text-rose-300'}`}>{reminder.name}</p>
+                      <p className="text-xs text-gray-300">{reminder.message}</p>
                     </div>
                   </motion.button>
                 ))}
@@ -744,14 +768,14 @@ const App: React.FC = () => {
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                     onClick={() => setActiveModal('reminders')}
-                    className="w-full text-left p-4 rounded-2xl flex items-center gap-4 transition-all bg-diesel/5 border border-diesel/30 hover:bg-diesel/10"
+                    className="w-full text-left p-4 rounded-2xl flex items-center gap-4 transition-all bg-amber-950/35 border border-amber-500/30 hover:bg-amber-900/45 shadow-sm"
                   >
-                    <div className="p-3 rounded-xl bg-diesel/20">
-                      <BellIcon size={20} className="text-diesel" />
+                    <div className="p-3 rounded-xl bg-amber-500/20">
+                      <BellIcon size={20} className="text-amber-300" />
                     </div>
                     <div>
-                      <p className="font-black text-diesel">{reminder.name}</p>
-                      <p className="text-xs text-gray-400 font-mono">{reminder.message}</p>
+                      <p className="font-black text-amber-300">{reminder.name}</p>
+                      <p className="text-xs text-gray-300">{reminder.message}</p>
                     </div>
                   </motion.button>
                 ))}
@@ -760,7 +784,7 @@ const App: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* SEÇÃO 3: TECNOLOGIAS & FERRAMENTAS (AÇÕES RÁPIDAS) */}
+        {/* SEÇÃO 3: TECNOLOGIAS & FERRAMENTAS (AÇÕES RÁPIDAS COM TONS SUAVES) */}
         <motion.section 
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -769,9 +793,9 @@ const App: React.FC = () => {
           className="space-y-4"
         >
           <div className="flex items-center gap-2">
-            <PlusIcon size={16} className="text-etanol animate-pulse" />
-            <h2 className="text-xs font-black text-etanol uppercase tracking-[0.25em] font-display">Tecnologias & Ferramentas</h2>
-            <div className="h-[2px] flex-grow ml-4 bg-gradient-to-r from-etanol/35 to-transparent"></div>
+            <PlusIcon size={16} className="text-emerald-400 animate-pulse" />
+            <h2 className="text-xs font-black text-emerald-400 uppercase tracking-[0.25em] font-display">Tecnologias & Ferramentas</h2>
+            <div className="h-[2px] flex-grow ml-4 bg-gradient-to-r from-emerald-500/40 to-transparent"></div>
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -779,14 +803,14 @@ const App: React.FC = () => {
               whileHover={{ y: -4 }}
               whileTap={{ scale: 0.96 }}
               onClick={() => { setEntryToEdit(null); setActiveModal('entry'); }}
-              className="glass-card p-5 flex flex-col items-center gap-3 group border border-white/5 tech-border-glow-gasolina hover:bg-slate-900/40 relative overflow-hidden"
+              className="bg-rose-950/35 border border-rose-500/25 hover:bg-rose-900/45 hover:border-rose-500/45 p-5 rounded-2xl flex flex-col items-center gap-3 group transition-all relative overflow-hidden shadow-sm"
             >
-              <div className="p-3 bg-gasolina/10 rounded-2xl group-hover:bg-gasolina/20 transition-colors shadow-[0_0_15px_rgba(153,27,27,0.15)]">
-                <PlusIcon className="text-gasolina" size={20} />
+              <div className="p-3 bg-rose-500/20 rounded-2xl group-hover:bg-rose-500/30 transition-colors shadow-sm">
+                <PlusIcon className="text-rose-400" size={20} />
               </div>
               <div className="text-center">
-                <span className="font-black text-[10px] uppercase tracking-widest text-white block">Abastecer</span>
-                <span className="text-[8px] text-gray-500 font-bold uppercase block mt-0.5">Novo Registro</span>
+                <span className="font-black text-[10px] uppercase tracking-wider text-white block">Abastecer</span>
+                <span className="text-[8px] text-rose-300/80 font-bold uppercase block mt-0.5">Novo Registro</span>
               </div>
             </motion.button>
 
@@ -794,14 +818,14 @@ const App: React.FC = () => {
               whileHover={{ y: -4 }}
               whileTap={{ scale: 0.96 }}
               onClick={() => setActiveModal('trip')}
-              className="glass-card p-5 flex flex-col items-center gap-3 group border border-white/5 tech-border-glow-etanol hover:bg-slate-900/40 relative overflow-hidden"
+              className="bg-emerald-950/35 border border-emerald-500/25 hover:bg-emerald-900/45 hover:border-emerald-500/45 p-5 rounded-2xl flex flex-col items-center gap-3 group transition-all relative overflow-hidden shadow-sm"
             >
-              <div className="p-3 bg-etanol/10 rounded-2xl group-hover:bg-etanol/20 transition-colors shadow-[0_0_15px_rgba(22,163,74,0.15)]">
-                <CalculatorIcon className="text-etanol" size={20} />
+              <div className="p-3 bg-emerald-500/20 rounded-2xl group-hover:bg-emerald-500/30 transition-colors shadow-sm">
+                <CalculatorIcon className="text-emerald-400" size={20} />
               </div>
               <div className="text-center">
-                <span className="font-black text-[10px] uppercase tracking-widest text-white block">Viagem</span>
-                <span className="text-[8px] text-gray-500 font-bold uppercase block mt-0.5">Simular Rota</span>
+                <span className="font-black text-[10px] uppercase tracking-wider text-white block">Viagem</span>
+                <span className="text-[8px] text-emerald-300/80 font-bold uppercase block mt-0.5">Simular Rota</span>
               </div>
             </motion.button>
 
@@ -809,14 +833,14 @@ const App: React.FC = () => {
               whileHover={{ y: -4 }}
               whileTap={{ scale: 0.96 }}
               onClick={() => setActiveModal('comparison')}
-              className="glass-card p-5 flex flex-col items-center gap-3 group border border-white/5 tech-border-glow-gasolina hover:bg-slate-900/40 relative overflow-hidden"
+              className="bg-amber-950/35 border border-amber-500/25 hover:bg-amber-900/45 hover:border-amber-500/45 p-5 rounded-2xl flex flex-col items-center gap-3 group transition-all relative overflow-hidden shadow-sm"
             >
-              <div className="p-3 bg-gasolina/10 rounded-2xl group-hover:bg-gasolina/20 transition-colors shadow-[0_0_15px_rgba(153,27,27,0.15)]">
-                <LightbulbIcon className="text-gasolina" size={20} />
+              <div className="p-3 bg-amber-500/20 rounded-2xl group-hover:bg-amber-500/30 transition-colors shadow-sm">
+                <LightbulbIcon className="text-amber-400" size={20} />
               </div>
               <div className="text-center">
-                <span className="font-black text-[10px] uppercase tracking-widest text-white block">Vantagem</span>
-                <span className="text-[8px] text-gray-500 font-bold uppercase block mt-0.5">Etanol x Gas</span>
+                <span className="font-black text-[10px] uppercase tracking-wider text-white block">Vantagem</span>
+                <span className="text-[8px] text-amber-300/80 font-bold uppercase block mt-0.5">Etanol x Gas</span>
               </div>
             </motion.button>
 
@@ -824,14 +848,14 @@ const App: React.FC = () => {
               whileHover={{ y: -4 }}
               whileTap={{ scale: 0.96 }}
               onClick={() => setActiveModal('prediction')}
-              className="glass-card p-5 flex flex-col items-center gap-3 group border border-white/5 tech-border-glow-etanol hover:bg-slate-900/40 relative overflow-hidden"
+              className="bg-teal-950/35 border border-teal-500/25 hover:bg-teal-900/45 hover:border-teal-500/45 p-5 rounded-2xl flex flex-col items-center gap-3 group transition-all relative overflow-hidden shadow-sm"
             >
-              <div className="p-3 bg-etanol/10 rounded-2xl group-hover:bg-etanol/20 transition-colors shadow-[0_0_15px_rgba(22,163,74,0.15)]">
-                <CoinsIcon className="text-etanol" size={20} />
+              <div className="p-3 bg-teal-500/20 rounded-2xl group-hover:bg-teal-500/30 transition-colors shadow-sm">
+                <CoinsIcon className="text-teal-400" size={20} />
               </div>
               <div className="text-center">
-                <span className="font-black text-[10px] uppercase tracking-widest text-white block">Previsão</span>
-                <span className="text-[8px] text-gray-500 font-bold uppercase block mt-0.5">Preço Estimado</span>
+                <span className="font-black text-[10px] uppercase tracking-wider text-white block">Previsão</span>
+                <span className="text-[8px] text-teal-300/80 font-bold uppercase block mt-0.5">Preço Estimado</span>
               </div>
             </motion.button>
 
@@ -839,14 +863,14 @@ const App: React.FC = () => {
               whileHover={{ y: -4 }}
               whileTap={{ scale: 0.96 }}
               onClick={() => setActiveModal('maintenance')}
-              className="glass-card p-5 flex flex-col items-center gap-3 group border border-white/5 tech-border-glow-gnv hover:bg-slate-900/40 relative overflow-hidden"
+              className="bg-sky-950/35 border border-sky-500/25 hover:bg-sky-900/45 hover:border-sky-500/45 p-5 rounded-2xl flex flex-col items-center gap-3 group transition-all relative overflow-hidden shadow-sm"
             >
-              <div className="p-3 bg-gnv/10 rounded-2xl group-hover:bg-gnv/20 transition-colors shadow-[0_0_15px_rgba(14,165,233,0.15)]">
-                <WrenchIcon className="text-gnv" size={20} />
+              <div className="p-3 bg-sky-500/20 rounded-2xl group-hover:bg-sky-500/30 transition-colors shadow-sm">
+                <WrenchIcon className="text-sky-400" size={20} />
               </div>
               <div className="text-center">
-                <span className="font-black text-[10px] uppercase tracking-widest text-white block">Oficina</span>
-                <span className="text-[8px] text-gray-500 font-bold uppercase block mt-0.5">Histórico Peças</span>
+                <span className="font-black text-[10px] uppercase tracking-wider text-white block">Oficina</span>
+                <span className="text-[8px] text-sky-300/80 font-bold uppercase block mt-0.5">Histórico Peças</span>
               </div>
             </motion.button>
 
@@ -854,20 +878,20 @@ const App: React.FC = () => {
               whileHover={{ y: -4 }}
               whileTap={{ scale: 0.96 }}
               onClick={() => setActiveModal('reminders')}
-              className="glass-card p-5 flex flex-col items-center gap-3 group border border-white/5 tech-border-glow-diesel hover:bg-slate-900/40 relative overflow-hidden"
+              className="bg-purple-950/35 border border-purple-500/25 hover:bg-purple-900/45 hover:border-purple-500/45 p-5 rounded-2xl flex flex-col items-center gap-3 group transition-all relative overflow-hidden shadow-sm"
             >
-              <div className="p-3 bg-diesel/10 rounded-2xl group-hover:bg-diesel/20 transition-colors shadow-[0_0_15px_rgba(234,179,8,0.15)]">
-                <BellIcon className="text-diesel" size={20} />
+              <div className="p-3 bg-purple-500/20 rounded-2xl group-hover:bg-purple-500/30 transition-colors shadow-sm">
+                <BellIcon className="text-purple-400" size={20} />
               </div>
               <div className="text-center">
-                <span className="font-black text-[10px] uppercase tracking-widest text-white block">Lembretes</span>
-                <span className="text-[8px] text-gray-500 font-bold uppercase block mt-0.5">Agendar Alertas</span>
+                <span className="font-black text-[10px] uppercase tracking-wider text-white block">Lembretes</span>
+                <span className="text-[8px] text-purple-300/80 font-bold uppercase block mt-0.5">Agendar Alertas</span>
               </div>
             </motion.button>
           </div>
         </motion.section>
 
-        {/* SEÇÃO 4: HISTÓRICO DE REGISTROS (RETORNADO PARCIALMENTE/TETERALMENTE DO BANCO DE DADOS) */}
+        {/* SEÇÃO 4: HISTÓRICO DE REGISTROS (COM TONS SUAVES POR TIPO DE COMBUSTÍVEL) */}
         <motion.section 
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -875,15 +899,15 @@ const App: React.FC = () => {
           transition={{ duration: 0.5, delay: 0.15 }}
           className="space-y-4"
         >
-          <div className="flex justify-between items-center bg-black/20 p-3 rounded-2xl border border-white/5">
+          <div className="flex justify-between items-center bg-slate-900/60 p-3 rounded-2xl border border-white/10">
             <div className="flex items-center gap-2">
-              <ChartIcon size={16} className="text-gnv animate-pulse" />
+              <ChartIcon size={16} className="text-sky-400 animate-pulse" />
               <h2 className="text-xs font-black text-white uppercase tracking-[0.25em] font-display">Registros Históricos</h2>
             </div>
             <select 
               value={monthFilter} 
               onChange={(e) => setMonthFilter(e.target.value)}
-              className="bg-slate-950 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest rounded-full px-4 py-2 outline-none focus:ring-1 focus:ring-gasolina/50 transition-all cursor-pointer font-sans shadow-lg"
+              className="bg-slate-800 border border-white/15 text-white text-[10px] font-black uppercase tracking-wider rounded-full px-4 py-2 outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all cursor-pointer shadow-md"
             >
               <option value="all">TODOS OS MESES</option>
               {availableMonths.map(month => (
@@ -898,76 +922,96 @@ const App: React.FC = () => {
 
           <div className="grid gap-3">
             {filteredEntries.length === 0 ? (
-              <div className="text-center text-gray-500 py-16 glass-card border border-dashed border-white/5">
-                <FuelPumpIcon size={48} className="mx-auto mb-4 opacity-10" />
-                <h3 className="text-lg font-black text-white/50">Sem registros</h3>
+              <div className="text-center text-gray-400 py-16 bg-slate-900/40 rounded-2xl border border-dashed border-white/10">
+                <FuelPumpIcon size={48} className="mx-auto mb-4 opacity-20" />
+                <h3 className="text-lg font-black text-white/70">Sem registros</h3>
                 <p className="text-xs text-gray-400 mt-1">Nenhum abastecimento encontrado para o filtro selecionado.</p>
               </div>
-            ) : filteredEntries.map((entry, index) => (
-              <motion.div 
-                key={entry.id} 
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                whileHover={{ y: -2, scale: 1.005 }}
-                transition={{ delay: Math.min(index * 0.04, 0.4), duration: 0.2 }}
-                className="glass-card p-4 flex items-center justify-between border border-white/5 hover:border-white/15 hover:bg-slate-950/80 transition-all cursor-pointer shadow-lg group relative overflow-hidden"
-                onClick={() => handleSelectEntry(entry)}
-              >
-                <div className="flex items-center gap-4 relative z-10">
-                  <div className={`text-center w-12 h-12 flex flex-col items-center justify-center rounded-xl bg-black/50 border ${
-                    entry.fuelType === FuelType.ETHANOL ? 'border-etanol/40 shadow-[0_0_10px_rgba(22,163,74,0.15)]' : 
-                    entry.fuelType === FuelType.GASOLINE ? 'border-gasolina/40 shadow-[0_0_10px_rgba(153,27,27,0.15)]' :
-                    entry.fuelType === FuelType.CNG ? 'border-gnv/40 shadow-[0_0_10px_rgba(14,165,233,0.15)]' : 'border-diesel/40 shadow-[0_0_10px_rgba(234,179,8,0.15)]'
-                  }`}>
-                    <p className="font-extrabold text-lg leading-none">{entry.date.getUTCDate()}</p>
-                    <p className="text-[8px] uppercase font-black text-gray-500 mt-0.5">{entry.date.toLocaleString('pt-BR', { month: 'short', timeZone: 'UTC' })}</p>
-                  </div>
-                  <div>
-                    <p className="font-mono font-black text-lg text-white">R$ {entry.totalValue.toFixed(2)}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">
-                        {entry.distance > 0 ? `${entry.distance.toFixed(0)} KM rodados` : 'Primeiro registro'}
-                      </p>
-                      {entry.isFull && (
-                        <span className="text-[8px] font-black px-1.5 py-0.2 bg-etanol/10 text-etanol border border-etanol/20 rounded">TANQUE CHEIO</span>
-                      )}
+            ) : filteredEntries.map((entry, index) => {
+              const isEthanol = entry.fuelType === FuelType.ETHANOL;
+              const isGasoline = entry.fuelType === FuelType.GASOLINE;
+              const isCNG = entry.fuelType === FuelType.CNG;
+              
+              const cardBg = isEthanol 
+                ? 'bg-emerald-950/30 border-emerald-500/25 hover:bg-emerald-900/40 hover:border-emerald-500/45' 
+                : isGasoline 
+                ? 'bg-rose-950/30 border-rose-500/25 hover:bg-rose-900/40 hover:border-rose-500/45'
+                : isCNG
+                ? 'bg-sky-950/30 border-sky-500/25 hover:bg-sky-900/40 hover:border-sky-500/45'
+                : 'bg-amber-950/30 border-amber-500/25 hover:bg-amber-900/40 hover:border-amber-500/45';
+
+              const badgeColor = isEthanol 
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                : isGasoline
+                ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                : isCNG
+                ? 'bg-sky-500/20 text-sky-300 border-sky-500/30'
+                : 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+
+              const valueColor = isEthanol 
+                ? 'text-emerald-300' 
+                : isGasoline 
+                ? 'text-rose-300' 
+                : isCNG 
+                ? 'text-sky-300' 
+                : 'text-amber-300';
+
+              return (
+                <motion.div 
+                  key={entry.id} 
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  whileHover={{ y: -2, scale: 1.005 }}
+                  transition={{ delay: Math.min(index * 0.04, 0.4), duration: 0.2 }}
+                  className={`p-4 rounded-2xl flex items-center justify-between border transition-all cursor-pointer shadow-md group relative overflow-hidden ${cardBg}`}
+                  onClick={() => handleSelectEntry(entry)}
+                >
+                  <div className="flex items-center gap-4 relative z-10">
+                    <div className={`text-center w-12 h-12 flex flex-col items-center justify-center rounded-xl bg-slate-900/80 border ${
+                      isEthanol ? 'border-emerald-500/40' : isGasoline ? 'border-rose-500/40' : isCNG ? 'border-sky-500/40' : 'border-amber-500/40'
+                    }`}>
+                      <p className="font-black text-lg leading-none text-white">{entry.date.getUTCDate()}</p>
+                      <p className="text-[8px] uppercase font-black text-gray-400 mt-0.5">{entry.date.toLocaleString('pt-BR', { month: 'short', timeZone: 'UTC' })}</p>
                     </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 relative z-10">
-                  <div className="text-right flex flex-col items-end justify-center">
-                    {entry.avgKmplReal && entry.avgKmplReal > 0 ? (
-                      <div className="flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-md mb-1 shadow-[0_0_10px_rgba(16,185,129,0.15)]">
-                        <span className="text-[7px] font-black text-emerald-450 tracking-wider">CONSUMO REAL:</span>
-                        <span className="font-mono font-black text-xs text-emerald-300">
-                          {entry.avgKmplReal.toFixed(1)} <span className="text-[8px] text-gray-400">km/L</span>
-                        </span>
+                    <div>
+                      <p className="font-display font-black text-lg text-white">R$ {entry.totalValue.toFixed(2)}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <p className="text-[9px] text-gray-300 font-bold uppercase tracking-wider">
+                          {entry.distance > 0 ? `${entry.distance.toFixed(0)} KM rodados` : 'Primeiro registro'}
+                        </p>
+                        {entry.isFull && (
+                          <span className="text-[8px] font-black px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded">TANQUE CHEIO</span>
+                        )}
                       </div>
-                    ) : null}
-                    
-                    <p className={`font-mono font-black text-sm tracking-tight ${
-                      entry.fuelType === FuelType.ETHANOL ? 'text-etanol/90' : 
-                      entry.fuelType === FuelType.GASOLINE ? 'text-gasolina/90' :
-                      entry.fuelType === FuelType.CNG ? 'text-gnv/90' : 'text-diesel/90'
-                    }`}>
-                      {entry.avgKmplReal && entry.avgKmplReal > 0 ? 'Média Abast.: ' : ''}
-                      {entry.avgKmpl > 0 ? entry.avgKmpl.toFixed(1) : '--'}
-                      <span className="text-[9px] text-gray-500 ml-0.5">km/L</span>
-                    </p>
-                    <div className={`text-[8px] font-black px-2 py-0.5 rounded-full inline-block uppercase tracking-widest mt-1 ${
-                      entry.fuelType === FuelType.ETHANOL ? 'bg-etanol/10 text-etanol border border-etanol/20' : 
-                      entry.fuelType === FuelType.GASOLINE ? 'bg-gasolina/10 text-gasolina border border-gasolina/20' :
-                      entry.fuelType === FuelType.CNG ? 'bg-gnv/10 text-gnv border border-gnv/20' : 'bg-diesel/10 text-diesel border border-diesel/20'
-                    }`}>
-                      {entry.fuelType}
                     </div>
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); handleEditClick(entry); }} className="p-2 text-gray-600 hover:text-white transition-colors">
-                    <EditIcon size={16} />
-                  </button>
-                </div>
-              </motion.div>
-            ))}
+                  <div className="flex items-center gap-4 relative z-10">
+                    <div className="text-right flex flex-col items-end justify-center">
+                      {entry.avgKmplReal && entry.avgKmplReal > 0 ? (
+                        <div className="flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-500/35 px-2 py-0.5 rounded-md mb-1 shadow-sm">
+                          <span className="text-[7px] font-black text-emerald-300 tracking-wider">CONSUMO REAL:</span>
+                          <span className="font-display font-black text-xs text-emerald-200">
+                            {entry.avgKmplReal.toFixed(1)} <span className="text-[8px] text-emerald-300/80">km/L</span>
+                          </span>
+                        </div>
+                      ) : null}
+                      
+                      <p className={`font-display font-black text-sm tracking-tight ${valueColor}`}>
+                        {entry.avgKmplReal && entry.avgKmplReal > 0 ? 'Média Abast.: ' : ''}
+                        {entry.avgKmpl > 0 ? entry.avgKmpl.toFixed(1) : '--'}
+                        <span className="text-[9px] text-gray-400 ml-0.5">km/L</span>
+                      </p>
+                      <div className={`text-[8px] font-black px-2 py-0.5 rounded-full inline-block uppercase tracking-wider mt-1 border ${badgeColor}`}>
+                        {entry.fuelType}
+                      </div>
+                    </div>
+                    <button onClick={(e) => { e.stopPropagation(); handleEditClick(entry); }} className="p-2 text-gray-400 hover:text-white transition-colors">
+                      <EditIcon size={16} />
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         </motion.section>
 
@@ -980,11 +1024,11 @@ const App: React.FC = () => {
           className="space-y-4"
         >
           <div className="flex items-center gap-2">
-            <ChartIcon size={16} className="text-gasolina text-gasolina animate-pulse" />
-            <h2 className="text-xs font-black text-gasolina uppercase tracking-[0.25em] font-display">Performance Analítica</h2>
+            <ChartIcon size={16} className="text-rose-400 animate-pulse" />
+            <h2 className="text-xs font-black text-rose-400 uppercase tracking-[0.25em] font-display">Performance Analítica</h2>
           </div>
-          <div className="glass-card p-4 border border-white/5 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gasolina/5 rounded-full filter blur-xl"></div>
+          <div className="bg-indigo-950/25 border border-indigo-500/20 rounded-2xl p-4 relative overflow-hidden group shadow-md">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full filter blur-xl"></div>
             <AnalyticsDashboard data={chartData} />
           </div>
         </motion.section>
@@ -1013,6 +1057,7 @@ const App: React.FC = () => {
           />
         </motion.section>
 
+
         {/* SEÇÃO 6: TUTOR DE CONDUÇÃO INTELIGENTE (DICAS DE CONSUMO) */}
         <motion.section
           initial={{ opacity: 0, y: 30 }}
@@ -1024,18 +1069,29 @@ const App: React.FC = () => {
         </motion.section>
 
         {/* SEÇÃO 7: RODAPÉ */}
-        <footer className="pt-12 pb-16 flex flex-col items-center gap-6 opacity-70">
-          <button 
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.25em] text-white/50 hover:text-white transition-all bg-white/5 border border-white/5 hover:border-white/10 px-4 py-2.5 rounded-full"
-          >
-            <ExportIcon size={14} />
-            Exportar Banco de Dados
-          </button>
-          <div className="flex flex-col items-center gap-1.5 text-[9px] uppercase tracking-widest font-black text-center text-gray-500">
+        <footer className="pt-12 pb-16 flex flex-col items-center gap-4 opacity-80">
+          <div className="flex flex-wrap justify-center gap-3">
+            <button 
+              onClick={() => setActiveModal('sync')}
+              className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-emerald-400 hover:text-emerald-300 transition-all bg-emerald-950/30 border border-emerald-500/30 hover:border-emerald-500/50 px-4 py-2.5 rounded-full shadow-lg cursor-pointer"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+              </svg>
+              Sincronização & Backup Nuvem
+            </button>
+            <button 
+              onClick={handleExportCSV}
+              className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-white/60 hover:text-white transition-all bg-white/5 border border-white/5 hover:border-white/15 px-4 py-2.5 rounded-full cursor-pointer"
+            >
+              <ExportIcon size={14} />
+              Exportar Planilha (CSV)
+            </button>
+          </div>
+          <div className="flex flex-col items-center gap-1 text-[9px] uppercase tracking-widest font-black text-center text-gray-500 mt-2">
             <p>Desenvolvido por: <span className="text-white">André Brito</span></p>
             <p>Contato: <span className="text-gray-300">britodeandrade@gmail.com</span></p>
-            <p className="font-mono text-[8px] text-gray-600 mt-1">Versão: 1.0 • 2026 METRICS</p>
+            <p className="font-mono text-[8px] text-gray-600 mt-0.5">Versão: 1.0 • 2026 METRICS</p>
           </div>
         </footer>
       </main>
@@ -1048,6 +1104,25 @@ const App: React.FC = () => {
           onSave={handleSaveEntry} 
           entryToEdit={entryToEdit} 
           lastKm={currentMileage} 
+        />
+      )}
+      {activeModal === 'sync' && (
+        <CloudSyncModal
+          isOpen={true}
+          onClose={handleCloseModal}
+          user={user}
+          authLoading={authLoading}
+          isOnline={isOnline}
+          syncStatus={syncStatus}
+          signIn={signIn}
+          logOut={logOut}
+          entries={rawEntries}
+          maintenance={maintenanceData}
+          reminders={reminders}
+          favoriteStations={favoriteStations}
+          onImportJSON={handleImportJSON}
+          onForceSyncCloud={handleForceSyncCloud}
+          onExportCSV={handleExportCSV}
         />
       )}
       {activeModal === 'trip' && (

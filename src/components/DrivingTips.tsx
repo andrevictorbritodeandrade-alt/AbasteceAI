@@ -171,25 +171,23 @@ export const DrivingTips: React.FC<DrivingTipsProps> = ({ entries, averageKmpl }
   });
 
   return (
-    <div className="glass-card border border-white/5 p-6 rounded-3xl relative overflow-hidden group shadow-2xl">
-      <div className="absolute top-0 right-0 w-32 h-32 bg-etanol/5 rounded-full filter blur-xl"></div>
-      
+    <div className="bg-cyan-950/20 border border-cyan-500/20 p-6 rounded-2xl relative overflow-hidden group shadow-md flex flex-col gap-5">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-5 border-b border-white/5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-white/10">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-etanol/10 rounded-2xl border border-etanol/30 shadow-[0_0_15px_rgba(22,163,74,0.15)] flex items-center justify-center">
-            <Lightbulb className="text-etanol animate-pulse" size={20} />
+          <div className="p-2.5 bg-cyan-500/20 rounded-2xl border border-cyan-500/40 text-cyan-300 flex items-center justify-center shadow-sm">
+            <Lightbulb size={20} />
           </div>
           <div>
-            <h3 className="font-extrabold text-sm tracking-widest text-white uppercase font-display">Tutor de Condução Inteligente</h3>
-            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">Análise Científica de Rendimento</p>
+            <h3 className="font-display font-extrabold text-sm tracking-wide text-white uppercase">Tutor de Condução Inteligente</h3>
+            <p className="text-[10px] text-gray-300 font-bold uppercase tracking-wider mt-0.5">Análise Científica de Rendimento</p>
           </div>
         </div>
 
         {/* Dynamic Badge */}
         <div className="flex items-center gap-2">
-          <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Seu Perfil:</span>
-          <div className={`px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${efficiency.color}`}>
+          <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Seu Perfil:</span>
+          <div className={`px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-sm ${efficiency.color}`}>
             {efficiency.status === 'excellent' && <CheckCircle2 size={11} />}
             {efficiency.status === 'good' && <Sparkles size={11} />}
             {efficiency.status === 'low' && <AlertTriangle size={11} />}
@@ -200,17 +198,17 @@ export const DrivingTips: React.FC<DrivingTipsProps> = ({ entries, averageKmpl }
       </div>
 
       {/* Analysis Panel */}
-      <div className="bg-slate-950/40 border border-white/5 rounded-2xl p-4 mb-6">
+      <div className="bg-slate-900/60 border border-cyan-500/20 rounded-xl p-4 shadow-sm">
         <div className="flex items-start gap-3">
-          <div className="p-2 bg-white/5 rounded-xl text-gray-400 mt-0.5">
-            <TrendingUp size={16} className="text-etanol" />
+          <div className="p-2 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-300 mt-0.5">
+            <TrendingUp size={16} />
           </div>
           <div>
-            <p className="text-xs font-black text-gray-300 uppercase tracking-widest mb-1">Diagnóstico de Telemetria</p>
-            <p className="text-xs text-gray-400 leading-relaxed">{efficiency.feedback}</p>
+            <p className="text-xs font-black text-white uppercase tracking-wider mb-1">Diagnóstico de Telemetria</p>
+            <p className="text-xs text-gray-300 leading-relaxed">{efficiency.feedback}</p>
             {averageKmpl > 0 && (
-              <p className="text-[10px] font-bold text-gray-500 mt-2 font-mono">
-                MÈDIA CALCULADA: <span className="text-white font-extrabold">{averageKmpl.toFixed(2)} km/L</span> ({dominantFuel})
+              <p className="text-[10px] font-bold text-gray-400 mt-2 font-display">
+                MÉDIA CALCULADA: <span className="text-white font-extrabold">{averageKmpl.toFixed(2)} km/L</span> ({dominantFuel})
               </p>
             )}
           </div>
@@ -218,33 +216,32 @@ export const DrivingTips: React.FC<DrivingTipsProps> = ({ entries, averageKmpl }
       </div>
 
       {/* Clio 2010 16V Economy Profile Specific Card */}
-      <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-500/20 rounded-2xl p-4 mb-6 shadow-[0_0_20px_rgba(16,185,129,0.05)] relative overflow-hidden">
-        <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl" />
+      <div className="bg-gradient-to-r from-emerald-950/40 via-teal-950/20 to-slate-900/60 border border-emerald-500/30 rounded-xl p-4 shadow-sm relative overflow-hidden">
         <div className="flex items-start gap-3 relative z-10">
-          <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-450 mt-0.5">
+          <div className="p-2 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-emerald-300 mt-0.5">
             <Sparkles size={16} />
           </div>
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Seu Clio 2010 16V</p>
-              <span className="text-[8px] font-black bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded uppercase">Perfil de Economia Ativada</span>
+              <p className="text-[10px] font-black text-emerald-400 uppercase tracking-wider">Seu Clio 2010 16V</p>
+              <span className="text-[8px] font-black bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded uppercase border border-emerald-500/30">Perfil de Economia Ativada</span>
             </div>
-            <h4 className="font-extrabold text-sm text-white mt-1">Sua Condução Otimizada</h4>
-            <p className="text-xs text-gray-300 leading-relaxed mt-1">
-              Você está seguindo a receita perfeita de economia de combustível: dirigindo de <span className="text-emerald-400 font-bold">janelas abertas</span>, sem usar o ar-condicionado na velocidade ideal (<span className="text-emerald-400 font-bold">70 a 80 km/h</span>) e controlando o motor (<span className="text-emerald-400 font-bold">até 2.500 RPM</span>) no seu motor de 16 válvulas.
+            <h4 className="font-display font-extrabold text-sm text-white mt-1">Sua Condução Otimizada</h4>
+            <p className="text-xs text-gray-200 leading-relaxed mt-1">
+              Você está seguindo a receita perfeita de economia de combustível: dirigindo de <span className="text-emerald-300 font-bold">janelas abertas</span>, sem usar o ar-condicionado na velocidade ideal (<span className="text-emerald-300 font-bold">70 a 80 km/h</span>) e controlando o motor (<span className="text-emerald-300 font-bold">até 2.500 RPM</span>) no seu motor de 16 válvulas.
             </p>
-            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-emerald-500/15">
-              <div className="text-center bg-black/40 p-1.5 rounded-lg border border-emerald-500/10">
-                <p className="text-[8px] text-gray-500 font-bold uppercase tracking-wider">Velocidade Ideal</p>
-                <p className="text-[10px] font-mono font-black text-emerald-300">70 - 80 km/h</p>
+            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-emerald-500/20">
+              <div className="text-center bg-slate-950/60 p-2 rounded-lg border border-emerald-500/20">
+                <p className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">Velocidade Ideal</p>
+                <p className="text-xs font-display font-black text-emerald-300">70 - 80 km/h</p>
               </div>
-              <div className="text-center bg-black/40 p-1.5 rounded-lg border border-emerald-500/10">
-                <p className="text-[8px] text-gray-500 font-bold uppercase tracking-wider">Rotação Máxima</p>
-                <p className="text-[10px] font-mono font-black text-emerald-300">2.500 RPM</p>
+              <div className="text-center bg-slate-950/60 p-2 rounded-lg border border-emerald-500/20">
+                <p className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">Rotação Máxima</p>
+                <p className="text-xs font-display font-black text-emerald-300">2.500 RPM</p>
               </div>
-              <div className="text-center bg-black/40 p-1.5 rounded-lg border border-emerald-500/10">
-                <p className="text-[8px] text-gray-500 font-bold uppercase tracking-wider">Foco Térmico</p>
-                <p className="text-[10px] font-mono font-black text-emerald-300">Sem Ar / Vidro Aberto</p>
+              <div className="text-center bg-slate-950/60 p-2 rounded-lg border border-emerald-500/20">
+                <p className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">Foco Térmico</p>
+                <p className="text-xs font-display font-black text-emerald-300">Sem Ar / Vidro</p>
               </div>
             </div>
           </div>
@@ -252,15 +249,15 @@ export const DrivingTips: React.FC<DrivingTipsProps> = ({ entries, averageKmpl }
       </div>
 
       {/* Categories Toolbar */}
-      <div className="flex flex-wrap gap-1.5 p-1 bg-black/40 border border-white/5 rounded-xl mb-4">
+      <div className="flex flex-wrap gap-1.5 p-1 bg-slate-900/80 border border-white/10 rounded-xl">
         {(['all', 'conducao', 'manutencao', 'planejamento'] as const).map(cat => (
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
             className={`px-3 py-2 text-[9px] uppercase tracking-wider font-extrabold rounded-lg transition-all flex items-center gap-1.5 flex-1 justify-center ${
               activeCategory === cat 
-                ? 'bg-slate-900 border border-white/10 text-white shadow-md' 
-                : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+                ? 'bg-cyan-600 text-white shadow-md' 
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
           >
             {cat === 'all' && 'Todos'}
@@ -279,20 +276,20 @@ export const DrivingTips: React.FC<DrivingTipsProps> = ({ entries, averageKmpl }
             <div 
               key={tip.id}
               onClick={() => setExpandedTip(isExpanded ? null : tip.id)}
-              className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none bg-slate-950/20 ${
+              className={`p-3.5 rounded-xl border transition-all cursor-pointer select-none bg-slate-900/60 shadow-sm ${
                 tip.isPrio && efficiency.status === 'low'
-                  ? 'border-gasolina/20 hover:border-gasolina/45 bg-gasolina/5 shadow-[rgba(153,27,27,0.05)_0px_0px_10px]' 
+                  ? 'border-rose-500/30 hover:border-rose-500/50 bg-rose-950/20' 
                   : isExpanded 
-                    ? 'border-etanol/30 bg-etanol/5 hover:border-etanol/40 shadow-[rgba(22,163,74,0.05)_0px_0px_10px]' 
-                    : 'border-white/5 hover:border-white/15'
+                    ? 'border-cyan-500/40 bg-cyan-950/30' 
+                    : 'border-white/10 hover:border-cyan-500/30'
               }`}
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-3">
                   <div className={`p-1.5 rounded-lg flex items-center justify-center shrink-0 ${
                     tip.isPrio && efficiency.status === 'low' 
-                      ? 'bg-gasolina/20 text-gasolina shadow-[0_0_8px_rgba(153,27,27,0.2)]' 
-                      : 'bg-white/5 text-etanol'
+                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' 
+                      : 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
                   }`}>
                     {tip.id === 'throttle' && <Zap size={14} />}
                     {tip.id === 'engine-brake' && <TrendingUp size={14} />}
@@ -307,17 +304,17 @@ export const DrivingTips: React.FC<DrivingTipsProps> = ({ entries, averageKmpl }
                     <h4 className="text-[11px] font-black tracking-wide text-white uppercase flex items-center gap-2">
                       {tip.title}
                       {tip.isPrio && efficiency.status === 'low' && (
-                        <span className="text-[7px] bg-gasolina/20 border border-gasolina/45 text-gasolina px-1.5 py-0.2 rounded font-mono font-black animate-pulse">PRIORITÁRIA</span>
+                        <span className="text-[7px] bg-rose-500/20 border border-rose-500/40 text-rose-300 px-1.5 py-0.2 rounded font-mono font-black">PRIORITÁRIA</span>
                       )}
                     </h4>
-                    <span className="text-[8px] font-mono text-gray-500 uppercase tracking-widest mt-0.5 block">
-                      Potencial: <span className="text-etanol font-extrabold">{tip.impact}</span>
+                    <span className="text-[8px] font-display text-gray-400 uppercase tracking-wider mt-0.5 block">
+                      Potencial: <span className="text-cyan-300 font-extrabold">{tip.impact}</span>
                     </span>
                   </div>
                 </div>
                 
-                <div className="text-gray-500">
-                  <ArrowRight size={14} className={`transform transition-transform ${isExpanded ? 'rotate-90 text-etanol' : ''}`} />
+                <div className="text-gray-400">
+                  <ArrowRight size={14} className={`transform transition-transform ${isExpanded ? 'rotate-90 text-cyan-300' : ''}`} />
                 </div>
               </div>
 
@@ -330,7 +327,7 @@ export const DrivingTips: React.FC<DrivingTipsProps> = ({ entries, averageKmpl }
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <p className="text-[10.5px] leading-relaxed text-gray-400 font-sans border-t border-white/5 pt-2">
+                    <p className="text-xs leading-relaxed text-gray-300 border-t border-white/10 pt-2 font-sans">
                       {tip.description}
                     </p>
                   </motion.div>

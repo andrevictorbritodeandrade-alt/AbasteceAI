@@ -135,28 +135,25 @@ export const FuelMarketIndex: React.FC<FuelMarketIndexProps> = ({ entries }) => 
   }, [activeTrends]);
 
   return (
-    <div className="glass-card p-5 border border-white/5 relative overflow-hidden flex flex-col gap-5">
-      {/* Glow Effect */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-gasolina/5 rounded-full filter blur-xl pointer-events-none"></div>
-
+    <div className="bg-rose-950/20 border border-rose-500/20 rounded-2xl p-5 relative overflow-hidden flex flex-col gap-5 shadow-md">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/10 pb-4 relative z-10">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 bg-gasolina/10 border border-gasolina/30 text-gasolina rounded-lg">
-              <Activity size={15} />
+            <span className="p-1.5 bg-rose-500/20 border border-rose-500/40 text-rose-400 rounded-lg">
+              <Activity size={16} />
             </span>
             <h3 className="font-display font-extrabold text-white text-base">
-              Bolsa do Combustível <span className="text-gray-500 font-normal text-xs">(R$/L por Mês)</span>
+              Bolsa do Combustível <span className="text-gray-400 font-normal text-xs">(R$/L por Mês)</span>
             </h3>
           </div>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1.5 pl-1">
+          <p className="text-[10px] text-gray-300 font-bold uppercase tracking-wider mt-1.5 pl-1">
             Análise de Mercado do Município de Abastecimento
           </p>
         </div>
 
         {/* Brand/Fuel Selector */}
-        <div className="flex bg-black/40 p-1 border border-white/5 rounded-xl self-start md:self-center">
+        <div className="flex bg-slate-900/80 p-1 border border-white/10 rounded-xl self-start md:self-center">
           {Object.values(FuelType).map(fuel => {
             const hasData = trendsByFuel[fuel]?.length > 0;
             return (
@@ -165,7 +162,7 @@ export const FuelMarketIndex: React.FC<FuelMarketIndexProps> = ({ entries }) => 
                 onClick={() => setSelectedFuel(fuel)}
                 className={`px-3 py-1.5 text-[9px] uppercase tracking-wider font-extrabold rounded-lg transition-all ${
                   selectedFuel === fuel
-                    ? 'bg-gasolina text-white shadow-[0_0_12px_rgba(153,27,27,0.4)]'
+                    ? 'bg-rose-600 text-white shadow-md shadow-rose-900/40'
                     : 'text-gray-400 hover:text-white'
                 } ${!hasData ? 'opacity-40' : ''}`}
               >
@@ -178,41 +175,41 @@ export const FuelMarketIndex: React.FC<FuelMarketIndexProps> = ({ entries }) => 
 
       {/* Main Stats / Mercado Ticker Widget */}
       {activeTrends.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <Info size={28} className="mx-auto mb-2 opacity-20" />
+        <div className="text-center py-8 text-gray-400">
+          <Info size={28} className="mx-auto mb-2 opacity-30" />
           <p className="text-xs">Nenhum dado registrado para {selectedFuel}.</p>
-          <p className="text-[10px] text-gray-600 mt-1">Abasteça usando esse combustível para registrar na Bolsa local.</p>
+          <p className="text-[10px] text-gray-500 mt-1">Abasteça usando esse combustível para registrar na Bolsa local.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
           {/* Main Stock Card - Latest Value */}
-          <div className="bg-black/30 border border-white/5 p-4 rounded-xl flex flex-col justify-between hover:bg-black/50 transition-all">
+          <div className="bg-slate-900/60 border border-rose-500/20 p-4 rounded-xl flex flex-col justify-between hover:bg-slate-900/80 transition-all shadow-sm">
             <div>
-              <span className="text-[8px] text-gray-400 font-black tracking-widest uppercase">Último Fechamento ({latestTrend.monthName})</span>
+              <span className="text-[9px] text-gray-400 font-black tracking-wider uppercase">Último Fechamento ({latestTrend.monthName})</span>
               <div className="flex items-baseline gap-1 mt-1">
-                <p className="text-2xl font-mono font-black text-white">R$ {latestTrend.avgPrice.toFixed(3)}</p>
-                <span className="text-xs text-gray-500">/L</span>
+                <p className="text-2xl font-display font-black text-white">R$ {latestTrend.avgPrice.toFixed(3)}</p>
+                <span className="text-xs text-gray-400 font-bold">/L</span>
               </div>
             </div>
 
             {/* Price change badges - Stock Market Style */}
-            <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between">
+            <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
               {latestTrend.diffAbsolute !== 0 ? (
                 <>
-                  <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black tracking-tight ${
+                  <div className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-tight ${
                     latestTrend.diffAbsolute > 0 
-                      ? 'bg-red-500/10 text-red-400 border border-red-500/20' 
-                      : 'bg-emerald-500/10 text-emerald-450 border border-emerald-500/20'
+                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30' 
+                      : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                   }`}>
                     {latestTrend.diffAbsolute > 0 ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                     <span>{latestTrend.diffAbsolute > 0 ? 'ALTA' : 'BAIXA'} {Math.abs(latestTrend.diffPercent).toFixed(2)}%</span>
                   </div>
-                  <span className={`text-[10px] font-mono leading-none ${latestTrend.diffAbsolute > 0 ? 'text-red-400' : 'text-emerald-450'}`}>
+                  <span className={`text-[10px] font-display font-black leading-none ${latestTrend.diffAbsolute > 0 ? 'text-rose-300' : 'text-emerald-300'}`}>
                     {latestTrend.diffAbsolute > 0 ? '+' : ''}R$ {latestTrend.diffAbsolute.toFixed(2)}/L
                   </span>
                 </>
               ) : (
-                <div className="flex items-center gap-1 text-gray-400 px-2 py-0.5 bg-white/5 rounded-full text-[9px] font-extrabold uppercase tracking-widest">
+                <div className="flex items-center gap-1 text-gray-300 px-2.5 py-0.5 bg-white/10 rounded-full text-[9px] font-black uppercase tracking-wider">
                   <Minus size={10} /> ESTÁVEL
                 </div>
               )}
@@ -220,36 +217,36 @@ export const FuelMarketIndex: React.FC<FuelMarketIndexProps> = ({ entries }) => 
           </div>
 
           {/* Market Overview Statistics */}
-          <div className="bg-black/30 border border-white/5 p-4 rounded-xl flex flex-col justify-between hover:bg-black/50 transition-all">
+          <div className="bg-slate-900/60 border border-rose-500/20 p-4 rounded-xl flex flex-col justify-between hover:bg-slate-900/80 transition-all shadow-sm">
             <div className="space-y-3">
-              <span className="text-[8px] text-gray-400 font-black tracking-widest uppercase block">Métricas Históricas (Bolsa Real)</span>
+              <span className="text-[9px] text-gray-400 font-black tracking-wider uppercase block">Métricas Históricas (Bolsa Real)</span>
               
               <div className="grid grid-cols-2 gap-2">
-                <div className="bg-white/5 p-2 rounded-lg border border-white/5">
-                  <p className="text-[8px] text-gray-500 font-bold uppercase">Mínimo Pago</p>
-                  <p className="text-xs font-mono font-black text-emerald-300">R$ {statsSummary.minPrice.toFixed(3)}</p>
+                <div className="bg-emerald-950/30 p-2.5 rounded-lg border border-emerald-500/20">
+                  <p className="text-[8px] text-emerald-300/80 font-bold uppercase">Mínimo Pago</p>
+                  <p className="text-xs font-display font-black text-emerald-300">R$ {statsSummary.minPrice.toFixed(3)}</p>
                 </div>
-                <div className="bg-white/5 p-2 rounded-lg border border-white/5">
-                  <p className="text-[8px] text-gray-500 font-bold uppercase">Máximo Pago</p>
-                  <p className="text-xs font-mono font-black text-red-400">R$ {statsSummary.maxPrice.toFixed(3)}</p>
+                <div className="bg-rose-950/30 p-2.5 rounded-lg border border-rose-500/20">
+                  <p className="text-[8px] text-rose-300/80 font-bold uppercase">Máximo Pago</p>
+                  <p className="text-xs font-display font-black text-rose-300">R$ {statsSummary.maxPrice.toFixed(3)}</p>
                 </div>
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs">
-              <span className="text-gray-400">Média de Roteiro:</span>
-              <span className="font-mono font-bold text-white">R$ {statsSummary.overallAvg.toFixed(2)}/L</span>
+            <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs">
+              <span className="text-gray-300">Média de Roteiro:</span>
+              <span className="font-display font-black text-white">R$ {statsSummary.overallAvg.toFixed(2)}/L</span>
             </div>
           </div>
 
           {/* Stock Ticker Advice / Summary text */}
-          <div className="bg-black/30 border border-white/5 p-4 rounded-xl flex flex-col justify-between hover:bg-black/50 transition-all relative overflow-hidden">
+          <div className="bg-slate-900/60 border border-rose-500/20 p-4 rounded-xl flex flex-col justify-between hover:bg-slate-900/80 transition-all shadow-sm relative overflow-hidden">
             <div className="space-y-2">
-              <span className="text-[8px] text-gray-400 font-black tracking-widest uppercase block">Análise de Tendência</span>
-              <p className="text-xs text-gray-300 leading-relaxed font-medium">
+              <span className="text-[9px] text-gray-400 font-black tracking-wider uppercase block">Análise de Tendência</span>
+              <p className="text-xs text-gray-200 leading-relaxed font-medium">
                 {latestTrend.diffAbsolute > 0 ? (
                   <>
-                    Detectamos uma <span className="text-red-400 font-black">alta de preços</span> no combustível local. Tente abastecer nos postos com estoque antigo ou priorize postos com bom rendimento.
+                    Detectamos uma <span className="text-rose-400 font-black">alta de preços</span> no combustível local. Tente abastecer nos postos com estoque antigo ou priorize postos com bom rendimento.
                   </>
                 ) : latestTrend.diffAbsolute < 0 ? (
                   <>
@@ -257,14 +254,14 @@ export const FuelMarketIndex: React.FC<FuelMarketIndexProps> = ({ entries }) => 
                   </>
                 ) : (
                   <>
-                    Preços <span className="text-gray-400 font-black">estáveis</span> em relação ao mês anterior. Mantenha o monitoramento para detectar flutuações futuras.
+                    Preços <span className="text-gray-300 font-black">estáveis</span> em relação ao mês anterior. Mantenha o monitoramento para detectar flutuações futuras.
                   </>
                 )}
               </p>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-white/5 flex items-center gap-1 text-[9px] text-gray-400 font-semibold italic">
-              <Info size={12} className="text-gasolina shrink-0" />
+            <div className="mt-4 pt-3 border-t border-white/10 flex items-center gap-1 text-[9px] text-gray-400 font-semibold italic">
+              <Info size={12} className="text-rose-400 shrink-0" />
               <span>Baseado em {activeTrends.length} meses e {entries.filter(e => e.fuelType === selectedFuel).length} abastecimentos.</span>
             </div>
           </div>
@@ -274,45 +271,44 @@ export const FuelMarketIndex: React.FC<FuelMarketIndexProps> = ({ entries }) => 
       {/* Monthly Timeline List */}
       {activeTrends.length > 0 && (
         <div className="relative z-10 space-y-2">
-          <p className="text-[10px] text-gray-400 font-black tracking-widest uppercase mb-1">Evolução de Preços / Mês</p>
+          <p className="text-[10px] text-gray-400 font-black tracking-wider uppercase mb-1">Evolução de Preços / Mês</p>
           <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1">
-            {/* Reverse chronological so latest is on top with stock badge */}
-            {[...activeTrends].reverse().map((trend, index) => {
+            {[...activeTrends].reverse().map((trend) => {
               const isUp = trend.diffAbsolute > 0;
               const isDown = trend.diffAbsolute < 0;
 
               return (
                 <div 
                   key={trend.monthKey}
-                  className="flex items-center justify-between p-3 bg-black/40 hover:bg-white/5 rounded-xl border border-white/5 transition-all text-xs"
+                  className="flex items-center justify-between p-3 bg-slate-900/70 hover:bg-slate-900/90 rounded-xl border border-white/10 transition-all text-xs"
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5">
-                      <Calendar size={13} className="text-gray-500" />
+                      <Calendar size={13} className="text-gray-400" />
                       <span className="font-extrabold text-white text-[11px]">{trend.monthName}</span>
                     </div>
-                    <span className="text-[9px] text-gray-500 font-bold uppercase bg-white/5 rounded px-1.5 py-0.5">
+                    <span className="text-[9px] text-gray-400 font-bold uppercase bg-white/10 rounded px-1.5 py-0.5">
                       {trend.count} {trend.count === 1 ? 'Abast.' : 'Abasts.'}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <p className="font-mono font-black text-white text-[11px]">R$ {trend.avgPrice.toFixed(2)}<span className="text-[9px] text-gray-500">/L</span></p>
-                      <p className="text-[8px] text-gray-500 font-bold uppercase">Gasto: R$ {trend.totalSpent.toFixed(0)}</p>
+                      <p className="font-display font-black text-white text-[11px]">R$ {trend.avgPrice.toFixed(2)}<span className="text-[9px] text-gray-400 font-normal">/L</span></p>
+                      <p className="text-[8px] text-gray-400 font-bold uppercase">Gasto: R$ {trend.totalSpent.toFixed(0)}</p>
                     </div>
 
                     <div className="min-w-16 flex justify-end">
                       {isUp ? (
-                        <span className="flex items-center gap-0.5 text-[10px] font-bold text-red-400 bg-red-400/10 px-2 py-0.5 rounded-lg border border-red-500/10">
+                        <span className="flex items-center gap-0.5 text-[10px] font-bold text-rose-300 bg-rose-500/20 px-2 py-0.5 rounded-lg border border-rose-500/30">
                           +{trend.diffPercent.toFixed(1)}% 📈
                         </span>
                       ) : isDown ? (
-                        <span className="flex items-center gap-0.5 text-[10px] font-bold text-emerald-450 bg-emerald-450/10 px-2 py-0.5 rounded-lg border border-emerald-500/10">
+                        <span className="flex items-center gap-0.5 text-[10px] font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-lg border border-emerald-500/30">
                           {trend.diffPercent.toFixed(1)}% 📉
                         </span>
                       ) : (
-                        <span className="flex items-center gap-0.5 text-[9px] font-bold text-gray-400 bg-white/5 px-2 py-0.5 rounded-lg border border-white/5">
+                        <span className="flex items-center gap-0.5 text-[9px] font-bold text-gray-400 bg-white/10 px-2 py-0.5 rounded-lg border border-white/10">
                           Estável
                         </span>
                       )}

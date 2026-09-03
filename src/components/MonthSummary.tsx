@@ -24,23 +24,24 @@ export const MonthSummary: React.FC<MonthSummaryProps> = ({ entries, filterValue
   if (filterValue === 'all') return null;
 
   return (
-    <div className="glass-card p-4 grid grid-cols-2 gap-4">
-      <div>
-        <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Total Gasto</p>
-        <p className="text-xl font-display font-bold text-gasolina">R$ {summary.totalSpent.toFixed(2)}</p>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="bg-rose-950/35 border border-rose-500/25 p-3.5 rounded-2xl shadow-sm">
+        <p className="text-[10px] text-rose-300/80 uppercase font-black tracking-wider">Total Gasto</p>
+        <p className="text-xl font-display font-black text-rose-300 mt-1">R$ {summary.totalSpent.toFixed(2)}</p>
       </div>
-      <div>
-        <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Litros</p>
-        <p className="text-xl font-display font-bold text-white">{summary.totalLiters.toFixed(2)} L</p>
+      <div className="bg-sky-950/35 border border-sky-500/25 p-3.5 rounded-2xl shadow-sm">
+        <p className="text-[10px] text-sky-300/80 uppercase font-black tracking-wider">Litros</p>
+        <p className="text-xl font-display font-black text-sky-200 mt-1">{summary.totalLiters.toFixed(2)} L</p>
       </div>
-      <div>
-        <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Distância</p>
-        <p className="text-xl font-display font-bold text-white">{summary.totalDistance.toFixed(0)} km</p>
+      <div className="bg-purple-950/35 border border-purple-500/25 p-3.5 rounded-2xl shadow-sm">
+        <p className="text-[10px] text-purple-300/80 uppercase font-black tracking-wider">Distância</p>
+        <p className="text-xl font-display font-black text-purple-200 mt-1">{summary.totalDistance.toFixed(0)} km</p>
       </div>
-      <div>
-        <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest">Média do Mês</p>
-        <p className="text-xl font-display font-bold text-etanol">{summary.avgKmpl.toFixed(2)} km/L</p>
+      <div className="bg-emerald-950/35 border border-emerald-500/25 p-3.5 rounded-2xl shadow-sm">
+        <p className="text-[10px] text-emerald-300/80 uppercase font-black tracking-wider">Média do Mês</p>
+        <p className="text-xl font-display font-black text-emerald-300 mt-1">{summary.avgKmpl.toFixed(2)} km/L</p>
       </div>
     </div>
   );
 };
+

@@ -69,30 +69,27 @@ export const FavoriteStations: React.FC<FavoriteStationsProps> = ({
   };
 
   return (
-    <div className="glass-card p-5 border border-white/5 relative overflow-hidden flex flex-col gap-5">
-      {/* Background glow shadow */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-etanol/5 rounded-full filter blur-xl pointer-events-none"></div>
-
+    <div className="bg-emerald-950/20 border border-emerald-500/20 rounded-2xl p-5 relative overflow-hidden flex flex-col gap-5 shadow-md">
       {/* Header and Toggle Button */}
       <div className="flex justify-between items-center border-b border-white/10 pb-4 relative z-10">
         <div>
           <div className="flex items-center gap-2">
-            <span className="p-1.5 bg-etanol/10 border border-etanol/30 text-etanol rounded-lg">
-              <Award size={15} />
+            <span className="p-1.5 bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 rounded-lg">
+              <Award size={16} />
             </span>
             <h3 className="font-display font-extrabold text-white text-base">Postos Favoritos</h3>
           </div>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1.5 pl-1">
+          <p className="text-[10px] text-gray-300 font-bold uppercase tracking-wider mt-1.5 pl-1">
             Mapeamento de Qualidade & Rendimento de Combustível
           </p>
         </div>
 
         <button
           onClick={() => setIsAdding(!isAdding)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border shadow-sm ${
             isAdding 
-              ? 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20' 
-              : 'bg-etanol/10 border-etanol/30 text-etanol hover:bg-etanol/20 hover:shadow-[0_0_10px_rgba(22,163,74,0.15)] animate-pulse'
+              ? 'bg-rose-500/20 border-rose-500/30 text-rose-300 hover:bg-rose-500/30' 
+              : 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30'
           }`}
         >
           {isAdding ? (
@@ -116,11 +113,11 @@ export const FavoriteStations: React.FC<FavoriteStationsProps> = ({
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3 }}
             onSubmit={handleSubmit}
-            className="bg-black/30 border border-etanol/20 p-4 rounded-xl space-y-4 relative z-10 overflow-hidden"
+            className="bg-slate-900/80 border border-emerald-500/30 p-4 rounded-xl space-y-4 relative z-10 overflow-hidden shadow-md"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               <div className="space-y-1">
-                <label className="text-[9px] uppercase tracking-wider font-extrabold text-gray-500">Nome do Posto</label>
+                <label className="text-[9px] uppercase tracking-wider font-extrabold text-gray-400">Nome do Posto</label>
                 <input
                   type="text"
                   required
@@ -132,9 +129,9 @@ export const FavoriteStations: React.FC<FavoriteStationsProps> = ({
               </div>
 
               <div className="space-y-1">
-                <label className="text-[9px] uppercase tracking-wider font-extrabold text-gray-500">Bandeira / Distribuidora</label>
+                <label className="text-[9px] uppercase tracking-wider font-extrabold text-gray-400">Bandeira / Distribuidora</label>
                 <select
-                  className="input-field w-full text-xs py-2"
+                  className="input-field w-full text-xs py-2 bg-slate-800"
                   value={formData.brand}
                   onChange={e => setFormData({ ...formData, brand: e.target.value })}
                 >
@@ -147,7 +144,7 @@ export const FavoriteStations: React.FC<FavoriteStationsProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
               <div className="space-y-1">
-                <label className="text-[9px] uppercase tracking-wider font-extrabold text-gray-500">Avaliação do Combustível</label>
+                <label className="text-[9px] uppercase tracking-wider font-extrabold text-gray-400">Avaliação do Combustível</label>
                 <div className="flex gap-1.5 pt-1.5">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
@@ -158,7 +155,7 @@ export const FavoriteStations: React.FC<FavoriteStationsProps> = ({
                     >
                       <Star 
                         size={18} 
-                        className={star <= formData.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600'} 
+                        className={star <= formData.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-600'} 
                       />
                     </button>
                   ))}
@@ -166,9 +163,9 @@ export const FavoriteStations: React.FC<FavoriteStationsProps> = ({
               </div>
 
               <div className="space-y-1">
-                <label className="text-[9px] uppercase tracking-wider font-extrabold text-gray-500">Combustível Destaque ("Rende Melhor")</label>
+                <label className="text-[9px] uppercase tracking-wider font-extrabold text-gray-400">Combustível Destaque ("Rende Melhor")</label>
                 <select
-                  className="input-field w-full text-xs py-2"
+                  className="input-field w-full text-xs py-2 bg-slate-800"
                   value={formData.bestFuel}
                   onChange={e => setFormData({ ...formData, bestFuel: e.target.value as FuelType })}
                 >
@@ -179,7 +176,7 @@ export const FavoriteStations: React.FC<FavoriteStationsProps> = ({
               </div>
 
               <div className="space-y-1">
-                <label className="text-[9px] uppercase tracking-wider font-extrabold text-gray-500">Localização/Bairro (Opcional)</label>
+                <label className="text-[9px] uppercase tracking-wider font-extrabold text-gray-400">Localização/Bairro (Opcional)</label>
                 <input
                   type="text"
                   placeholder="Ex: Centro, Rodovia KM 50"
@@ -191,9 +188,9 @@ export const FavoriteStations: React.FC<FavoriteStationsProps> = ({
             </div>
 
             <div className="space-y-1">
-              <label className="text-[9px] uppercase tracking-wider font-extrabold text-gray-500">Justificativa de Rendimento ou Qualidade</label>
+              <label className="text-[9px] uppercase tracking-wider font-extrabold text-gray-400">Justificativa de Rendimento ou Qualidade</label>
               <textarea
-                placeholder="Ex: Gasolina aditivada rende muito no Clio, motor fica suave e não falha pós partida a frio."
+                placeholder="Ex: Gasolina aditivada rende muito, motor fica suave e não falha pós partida a frio."
                 className="input-field w-full h-16 text-xs py-2 resize-none"
                 value={formData.notes}
                 onChange={e => setFormData({ ...formData, notes: e.target.value })}
@@ -202,7 +199,7 @@ export const FavoriteStations: React.FC<FavoriteStationsProps> = ({
 
             <button
               type="submit"
-              className="w-full py-2.5 rounded-lg bg-etanol hover:bg-emerald-600 text-white font-extrabold uppercase text-[10px] tracking-widest transition-all shadow-md flex items-center justify-center gap-1.5"
+              className="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase text-[10px] tracking-wider transition-all shadow-md flex items-center justify-center gap-1.5"
             >
               <Check size={14} /> Salvar Favorito
             </button>
@@ -213,27 +210,27 @@ export const FavoriteStations: React.FC<FavoriteStationsProps> = ({
       {/* Favorites List layout */}
       <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-3">
         {stations.length === 0 ? (
-          <div className="col-span-full text-center py-10 border border-dashed border-white/5 rounded-2xl bg-black/10">
-            <Sparkles size={32} className="mx-auto text-gray-600 mb-2.5 opacity-35" />
-            <p className="text-gray-400 text-xs font-semibold">Nenhum posto de combustível favorito cadastrado.</p>
-            <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-widest">Registre onde a gasolina rende melhor!</p>
+          <div className="col-span-full text-center py-10 border border-dashed border-white/10 rounded-2xl bg-slate-900/40">
+            <Sparkles size={32} className="mx-auto text-gray-500 mb-2.5 opacity-40" />
+            <p className="text-gray-300 text-xs font-semibold">Nenhum posto de combustível favorito cadastrado.</p>
+            <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-wider">Registre onde a gasolina rende melhor!</p>
           </div>
         ) : (
           stations.map((station) => {
-            const brandColorClass = STATION_BRANDS.find(b => b.name === station.brand)?.color || 'border-white/5 text-gray-400 bg-white/5';
+            const brandColorClass = STATION_BRANDS.find(b => b.name === station.brand)?.color || 'border-white/10 text-gray-300 bg-white/5';
             return (
               <motion.div
                 key={station.id}
                 initial={{ opacity: 0, x: -5 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="group border border-white/5 bg-slate-950/40 hover:bg-slate-950/70 p-4 rounded-xl flex justify-between gap-4 transition-all hover:border-etanol/30 relative"
+                className="group border border-emerald-500/20 bg-slate-900/60 hover:bg-slate-900/90 p-4 rounded-xl flex justify-between gap-4 transition-all hover:border-emerald-500/40 relative shadow-sm"
               >
                 <div className="space-y-2 flex-grow">
                   {/* Name and Rating */}
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-extrabold text-sm text-white tracking-tight leading-none">{station.name}</h4>
+                      <h4 className="font-display font-black text-sm text-white tracking-tight leading-none">{station.name}</h4>
                       <span className={`text-[8px] font-black uppercase border px-1.5 py-0.2 rounded leading-none shrink-0 ${brandColorClass}`}>
                         {station.brand}
                       </span>
@@ -244,7 +241,7 @@ export const FavoriteStations: React.FC<FavoriteStationsProps> = ({
                         <Star 
                           key={starIdx}
                           size={11} 
-                          className={starIdx < station.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600'} 
+                          className={starIdx < station.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-600'} 
                         />
                       ))}
                     </div>
@@ -252,11 +249,11 @@ export const FavoriteStations: React.FC<FavoriteStationsProps> = ({
 
                   {/* Highlights */}
                   <div className="flex gap-2 flex-wrap text-[10px]">
-                    <span className="flex items-center gap-1 text-[9px] font-semibold text-gray-400">
-                      <MapPin size={11} className="text-etanol" />
+                    <span className="flex items-center gap-1 text-[9px] font-semibold text-gray-300">
+                      <MapPin size={11} className="text-emerald-400" />
                       <span>{station.city || 'Município'}</span>
                     </span>
-                    <span className="flex items-center gap-1 text-[9px] font-black text-emerald-400 uppercase bg-etanol/10 border border-etanol/20 px-1.5 py-0.2 rounded">
+                    <span className="flex items-center gap-1 text-[9px] font-black text-emerald-300 uppercase bg-emerald-500/20 border border-emerald-500/30 px-1.5 py-0.2 rounded">
                       <Fuel size={10} />
                       Melhor: {station.bestFuel}
                     </span>
@@ -264,7 +261,7 @@ export const FavoriteStations: React.FC<FavoriteStationsProps> = ({
 
                   {/* Comment */}
                   {station.notes && (
-                    <p className="text-[11px] text-gray-400 italic bg-black/20 p-2 rounded border border-white/5 leading-relaxed">
+                    <p className="text-[11px] text-gray-300 italic bg-slate-950/40 p-2 rounded border border-white/5 leading-relaxed">
                       "{station.notes}"
                     </p>
                   )}
@@ -273,7 +270,7 @@ export const FavoriteStations: React.FC<FavoriteStationsProps> = ({
                 {/* Delete button */}
                 <button
                   onClick={() => onDeleteStation(station.id)}
-                  className="p-1 px-2 h-max rounded-lg border border-red-500/10 text-red-400 opacity-30 group-hover:opacity-100 hover:bg-red-500/15 transition-all text-gray-500"
+                  className="p-1 px-2 h-max rounded-lg border border-rose-500/20 text-rose-400 opacity-40 group-hover:opacity-100 hover:bg-rose-500/20 transition-all"
                   title="Remover Posto"
                 >
                   <Trash2 size={13} />

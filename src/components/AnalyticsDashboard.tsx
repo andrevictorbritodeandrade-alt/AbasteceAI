@@ -27,30 +27,30 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ data }) => {
   if (data.length < 2) {
     return (
-      <div className="text-center text-gray-500 py-12 bg-gray-900/30 rounded-2xl border border-dashed border-gray-800">
-        <h3 className="text-lg font-semibold text-white">Dados insuficientes para análise</h3>
-        <p className="mt-2">Adicione abastecimentos de meses diferentes para ver as tendências.</p>
+      <div className="text-center text-gray-400 py-12 bg-slate-900/40 rounded-2xl border border-dashed border-white/10">
+        <h3 className="text-base font-display font-bold text-white">Dados insuficientes para análise</h3>
+        <p className="mt-2 text-xs text-gray-400">Adicione abastecimentos de meses diferentes para ver as tendências.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-900/30 p-4 rounded-2xl border border-gray-800">
+    <div className="bg-slate-900/60 p-5 rounded-2xl border border-white/10 shadow-md">
       <div className="h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
             <XAxis 
               dataKey="name" 
-              stroke="#9CA3AF" 
-              fontSize={12} 
+              stroke="#94A3B8" 
+              fontSize={11} 
               tickLine={false} 
               axisLine={false} 
             />
             <YAxis 
               yAxisId="left"
-              stroke="#9CA3AF" 
-              fontSize={12} 
+              stroke="#94A3B8" 
+              fontSize={11} 
               tickLine={false} 
               axisLine={false}
               tickFormatter={(value) => `R$${value}`}
@@ -58,8 +58,8 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ data }) 
             <YAxis 
               yAxisId="right"
               orientation="right"
-              stroke="#9CA3AF" 
-              fontSize={12} 
+              stroke="#94A3B8" 
+              fontSize={11} 
               tickLine={false} 
               axisLine={false}
               tickFormatter={(value) => `${value}km/L`}
@@ -71,9 +71,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ data }) 
               type="monotone" 
               dataKey="gasto" 
               name="Gasto (R$)"
-              stroke="#991b1b" 
-              strokeWidth={3} 
-              dot={{ fill: '#991b1b', r: 4 }}
+              stroke="#f43f5e" 
+              strokeWidth={2.5} 
+              dot={{ fill: '#f43f5e', r: 4 }}
               activeDot={{ r: 6 }}
             />
             <Line 
@@ -81,9 +81,9 @@ export const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ data }) 
               type="monotone" 
               dataKey="consumo" 
               name="Consumo (km/L)"
-              stroke="#16a34a" 
-              strokeWidth={3} 
-              dot={{ fill: '#16a34a', r: 4 }}
+              stroke="#10b981" 
+              strokeWidth={2.5} 
+              dot={{ fill: '#10b981', r: 4 }}
               activeDot={{ r: 6 }}
             />
           </LineChart>
