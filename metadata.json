@@ -1,6 +1,6 @@
 {
   "name": "Meu Combustível",
-  "description": "Gerenciador de abastecimentos e manutenção veicular",
+  "description": "Gerenciador de abastecimentos e manutenção veicular com sincronização na nuvem",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

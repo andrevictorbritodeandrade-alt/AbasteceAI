@@ -1,42 +1,90 @@
 {
-  "__description__": "Schema for Meu Combustível app.",
-  "users": {
-    "__doc__": "Document ID is the Firebase Auth UID. Stores user-specific settings.",
-    "maintenance": {
-      "__doc__": "Singleton document for maintenance data. ID is 'current'.",
-      "currentMileage": 150000,
-      "oilChangeInterval": 10000,
-      "oilChange": 140000,
-      "timingBeltInterval": 50000,
-      "timingBelt": 100000
+  "entities": {
+    "FuelEntry": {
+      "title": "FuelEntry",
+      "description": "Fuel fill-up record including odometer, fuel type, price, and liters.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique entry identifier" },
+        "date": { "type": "string", "format": "date-time", "description": "Date of fueling" },
+        "kmEnd": { "type": "number", "description": "Odometer reading at fueling" },
+        "totalValue": { "type": "number", "description": "Total amount paid in BRL" },
+        "pricePerLiter": { "type": "number", "description": "Price per liter in BRL" },
+        "fuelType": { "type": "string", "enum": ["Gasolina", "Etanol", "GNV", "Diesel"], "description": "Type of fuel" },
+        "isFull": { "type": "boolean", "description": "Whether the tank was filled completely" },
+        "notes": { "type": "string", "description": "Optional notes or gas station name" }
+      },
+      "required": ["id", "date", "kmEnd", "totalValue", "pricePerLiter", "fuelType"]
     },
-    "entries": {
-      "__doc__": "Collection of fuel entries for this user. Document ID is auto-generated.",
-      "date": "2023-10-01T12:00:00Z",
-      "fuelType": "Gasolina",
-      "pricePerLiter": 5.59,
-      "totalValue": 100,
-      "mileage": 150000,
-      "fullTank": true
+    "MaintenanceData": {
+      "title": "MaintenanceData",
+      "description": "Odometer tracking for vehicle maintenance components.",
+      "type": "object",
+      "properties": {
+        "oil": { "type": "number", "description": "Last oil change KM" },
+        "tires": { "type": "number", "description": "Last tire service KM" },
+        "engine": { "type": "number", "description": "Last engine service KM" },
+        "brakes": { "type": "number", "description": "Last brake service KM" },
+        "fuelFilter": { "type": "number", "description": "Last fuel filter change KM" },
+        "airFilter": { "type": "number", "description": "Last air filter change KM" },
+        "cabinFilter": { "type": "number", "description": "Last cabin filter change KM" },
+        "coolant": { "type": "number", "description": "Last coolant flush KM" },
+        "sparkPlugs": { "type": "number", "description": "Last spark plugs replacement KM" },
+        "timingBelt": { "type": "number", "description": "Last timing belt replacement KM" }
+      }
     },
-    "reminders": {
-      "__doc__": "Collection of maintenance reminders. Document ID is auto-generated.",
-      "title": "Trocar óleo",
-      "targetKm": 150000,
-      "targetDate": "2023-10-01T12:00:00Z",
-      "type": "oil",
-      "completed": false,
-      "lastCompletionKm": 140000,
-      "lastCompletionDate": "2023-01-01T12:00:00Z"
+    "Reminder": {
+      "title": "Reminder",
+      "description": "Maintenance alerts scheduled by mileage or date.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "targetKm": { "type": "number" },
+        "targetDate": { "type": "string" },
+        "type": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "lastCompletionKm": { "type": "number" },
+        "lastCompletionDate": { "type": "string" }
+      },
+      "required": ["id", "title", "type", "completed"]
     },
-    "favoriteStations": {
-      "__doc__": "Collection of favorite gas stations. Document ID is auto-generated.",
-      "name": "Posto Shell Alvorada",
-      "brand": "Shell",
-      "rating": 5,
-      "bestFuel": "Gasolina",
-      "notes": "Gasolina V-Power",
-      "city": "Vila Mariana"
+    "FavoriteStation": {
+      "title": "FavoriteStation",
+      "description": "Favorite gas stations with ratings and notes.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "brand": { "type": "string" },
+        "rating": { "type": "number" },
+        "bestFuel": { "type": "string" },
+        "notes": { "type": "string" },
+        "city": { "type": "string" }
+      },
+      "required": ["id", "name", "rating"]
+    }
+  },
+  "firestore": {
+    "/entries/{entryId}": {
+      "schema": { "$ref": "#/entities/FuelEntry" },
+      "description": "Shared fuel fill-ups synchronized across all connected devices in real time."
+    },
+    "/maintenance/{docId}": {
+      "schema": { "$ref": "#/entities/MaintenanceData" },
+      "description": "Vehicle maintenance status singleton document."
+    },
+    "/reminders/{reminderId}": {
+      "schema": { "$ref": "#/entities/Reminder" },
+      "description": "Operational maintenance reminders."
+    },
+    "/favoriteStations/{stationId}": {
+      "schema": { "$ref": "#/entities/FavoriteStation" },
+      "description": "Favorite fuel stations."
+    },
+    "/users/{userId}/entries/{entryId}": {
+      "schema": { "$ref": "#/entities/FuelEntry" },
+      "description": "User-specific fuel entries backup."
     }
   }
 }

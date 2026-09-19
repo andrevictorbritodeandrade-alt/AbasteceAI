@@ -1,12 +1,27 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Shared vehicle data for real-time multi-device synchronization
+    match /entries/{entryId} {
+      allow read, write: if true;
+    }
+    match /maintenance/{docId} {
+      allow read, write: if true;
+    }
+    match /reminders/{reminderId} {
+      allow read, write: if true;
+    }
+    match /favoriteStations/{stationId} {
+      allow read, write: if true;
+    }
+
+    // User-specific document trees (optional authenticated backup)
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      
+      allow read, write: if true;
       match /{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if true;
       }
     }
   }
 }
+

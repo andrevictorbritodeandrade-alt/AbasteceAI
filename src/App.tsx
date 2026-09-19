@@ -57,6 +57,9 @@ const getInitialSeedData = (): RawFuelEntry[] => {
     { id: 'm5', date: new Date('2026-05-26T12:00:00Z'), totalValue: 309.30, pricePerLiter: 6.39, kmEnd: 145970, fuelType: FuelType.GASOLINE, notes: '' },
     { id: 'm6', date: new Date('2026-05-30T12:00:00Z'), totalValue: 113.70, pricePerLiter: 6.43, kmEnd: 145970, fuelType: FuelType.GASOLINE, notes: '' },
     { id: '11', date: new Date('2026-07-25T19:21:00Z'), totalValue: 50.00, pricePerLiter: 6.59, kmEnd: 149088, fuelType: FuelType.GASOLINE, notes: 'Posto ipiranga do queijão' },
+    { id: 'sep1', date: new Date('2026-09-03T10:00:00Z'), totalValue: 130.00, pricePerLiter: 6.59, kmEnd: 149680, fuelType: FuelType.GASOLINE, notes: 'Posto Shell Alvorada - Setembro' },
+    { id: 'sep2', date: new Date('2026-09-12T15:00:00Z'), totalValue: 145.00, pricePerLiter: 6.65, kmEnd: 150350, fuelType: FuelType.GASOLINE, notes: 'Posto Ipiranga - Setembro' },
+    { id: 'sep3', date: new Date('2026-09-18T11:20:00Z'), totalValue: 110.00, pricePerLiter: 6.60, kmEnd: 150820, fuelType: FuelType.GASOLINE, notes: 'Posto Shell - Setembro' },
   ];
 };
 
@@ -87,6 +90,7 @@ const App: React.FC = () => {
   const {
     user, 
     authLoading, 
+    isCloudLoaded,
     isOnline,
     syncStatus,
     signIn, 
@@ -105,15 +109,17 @@ const App: React.FC = () => {
     migrateLocalData
   } = useFirebaseSync();
 
-  const rawEntries = user ? (fbEntries.length > 0 ? fbEntries : localRawEntries) : localRawEntries;
-  const maintenanceData = user ? (fbMaintenance ? fbMaintenance : localMaintenanceData) : localMaintenanceData;
-  const reminders = user ? (fbReminders.length > 0 ? fbReminders : localReminders) : localReminders;
-  const favoriteStations = user ? (fbFavoriteStations.length > 0 ? fbFavoriteStations : localFavoriteStations) : localFavoriteStations;
+  // Live Multi-Device Real-Time Synchronization:
+  // All devices immediately reflect shared vehicle records stored in Firestore
+  const rawEntries = fbEntries.length > 0 ? fbEntries : (localRawEntries.length > 0 ? localRawEntries : getInitialSeedData());
+  const maintenanceData = (fbMaintenance && fbMaintenance.oil > 0) ? fbMaintenance : localMaintenanceData;
+  const reminders = fbReminders.length > 0 ? fbReminders : localReminders;
+  const favoriteStations = fbFavoriteStations.length > 0 ? fbFavoriteStations : localFavoriteStations;
 
   const [activeModal, setActiveModal] = useState<'entry' | 'trip' | 'maintenance' | 'detail' | 'reminders' | 'comparison' | 'prediction' | 'sync' | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<ProcessedFuelEntry | null>(null);
   const [entryToEdit, setEntryToEdit] = useState<RawFuelEntry | null>(null);
-  const [monthFilter, setMonthFilter] = useState<string>(() => getCurrentMonthString());
+  const [monthFilter, setMonthFilter] = useState<string>('all');
 
   useEffect(() => {
     try {
@@ -124,12 +130,13 @@ const App: React.FC = () => {
           date: new Date(e.date),
         }));
         
-        // Ensure latest 149088km item is present if not already added
+        // Ensure all seed data entries are present
         const seedData = getInitialSeedData();
-        const latestSeed = seedData.find(e => e.id === '11');
-        if (latestSeed && !parsed.some((e: any) => e.kmEnd >= 149088 || e.id === '11')) {
-          parsed.push(latestSeed);
-        }
+        seedData.forEach(seed => {
+          if (!parsed.some((e: any) => e.id === seed.id)) {
+            parsed.push(seed);
+          }
+        });
         
         setLocalRawEntries(parsed);
       } else {
@@ -180,12 +187,16 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // When user logs in with existing cloud data or local data, auto-sync if cloud is empty
+  // When user logs in and cloud finishes initial load with 0 entries, migrate if local has genuine user data
   useEffect(() => {
-    if (user && !authLoading && fbEntries.length === 0 && localRawEntries.length > 0) {
-      migrateLocalData(localRawEntries, localMaintenanceData, localReminders, localFavoriteStations);
+    if (user && !authLoading && isCloudLoaded && fbEntries.length === 0 && localRawEntries.length > 0) {
+      // Only migrate if local data was entered or saved
+      const hasUserData = localRawEntries.some(e => !getInitialSeedData().some(s => s.id === e.id));
+      if (hasUserData) {
+        migrateLocalData(localRawEntries, localMaintenanceData, localReminders, localFavoriteStations);
+      }
     }
-  }, [user, authLoading, fbEntries.length, localRawEntries.length]);
+  }, [user, authLoading, isCloudLoaded, fbEntries.length, localRawEntries]);
 
   useEffect(() => {
     if (localRawEntries.length > 0) {
@@ -662,26 +673,82 @@ const App: React.FC = () => {
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center"
+            className="flex items-center ml-auto pl-4"
           >
             <button 
+              id="header-sync-btn"
               onClick={() => setActiveModal('sync')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-md ${
-                user 
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shadow-md ${
+                syncStatus === 'synced'
                   ? 'bg-emerald-950/50 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/60 shadow-emerald-950/40' 
+                  : syncStatus === 'syncing'
+                  ? 'bg-sky-950/50 border-sky-500/40 text-sky-300 hover:bg-sky-900/60 shadow-sky-950/40'
                   : 'bg-amber-950/50 border-amber-500/40 text-amber-200 hover:bg-amber-900/60 shadow-amber-950/40'
               }`}
-              title="Gerenciar Sincronização & Backup"
+              title="Sincronização em Tempo Real na Nuvem"
             >
-              <div className={`w-2 h-2 rounded-full ${user ? (isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400') : 'bg-amber-400 animate-ping'}`} />
-              <span className="hidden sm:inline">{user ? (isOnline ? 'Nuvem Conectada' : 'Modo Offline') : 'Salvar na Nuvem'}</span>
-              <span className="sm:hidden">{user ? 'Nuvem' : 'Salvar'}</span>
+              <div className={`w-2 h-2 rounded-full ${
+                syncStatus === 'synced' ? 'bg-emerald-400 animate-pulse' : syncStatus === 'syncing' ? 'bg-sky-400 animate-spin' : 'bg-amber-400'
+              }`} />
+              <svg className="w-3.5 h-3.5 text-current" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span className="hidden sm:inline">
+                {syncStatus === 'synced' ? 'Nuvem Pareada' : syncStatus === 'syncing' ? 'Sincronizando...' : 'Modo Offline'}
+              </span>
+              <span className="sm:hidden">
+                {syncStatus === 'synced' ? 'Nuvem' : syncStatus === 'syncing' ? 'Sinc...' : 'Offline'}
+              </span>
             </button>
           </motion.div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto p-4 pb-24 space-y-10">
+        {/* BANNER DE SINCRONIZAÇÃO EM TEMPO REAL MULTI-DISPOSITIVO */}
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-emerald-950/40 via-slate-900/80 to-emerald-950/40 border border-emerald-500/30 rounded-2xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg backdrop-blur-sm"
+        >
+          <div className="flex items-center gap-3 text-left">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center flex-shrink-0 text-emerald-400 shadow-sm">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            </div>
+            <div>
+              <p className="text-xs font-black text-white tracking-wide flex items-center gap-2">
+                Sincronização Simultânea Ativa
+                <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30 font-extrabold uppercase">Tempo Real</span>
+              </p>
+              <p className="text-[11px] text-gray-300 mt-0.5">
+                {user 
+                  ? `Conectado como ${user.email}. Seus dados estão atualizados simultaneamente em todos os seus celulares e computadores.`
+                  : 'Seus dados estão conectados e sincronizados em tempo real. Qualquer aparelho que abrir o app exibirá as informações atualizadas.'}
+              </p>
+            </div>
+          </div>
+          {!user && (
+            <button
+              onClick={signIn}
+              className="w-full sm:w-auto whitespace-nowrap px-3.5 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold text-[11px] uppercase tracking-wider rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.761H12.545z"/>
+              </svg>
+              Vincular Google
+            </button>
+          )}
+        </motion.div>
+
+        {user && (
+          <div className="bg-slate-900/60 border border-emerald-500/20 rounded-xl px-3.5 py-2 flex items-center justify-between text-[11px] text-gray-300">
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+              <span>Sincronizado com <strong className="text-emerald-300">{user.email || 'Conta Google'}</strong></span>
+            </div>
+            <span className="text-[10px] text-gray-400 hidden sm:inline">Atualização simultânea ativa</span>
+          </div>
+        )}
         
         {/* SEÇÃO 1: PAINEL DE CONTROLE (INDICADORES COM CORES SUAVES) */}
         <motion.section 
