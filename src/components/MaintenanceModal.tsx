@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MaintenanceData } from '../types';
 
 interface MaintenanceModalProps {
@@ -11,6 +11,12 @@ interface MaintenanceModalProps {
 
 export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({ isOpen, onClose, onSave, currentMileage, initialData }) => {
   const [data, setData] = useState<MaintenanceData>(initialData);
+  const [editingKey, setEditingKey] = useState<keyof MaintenanceData | null>(null);
+  const [customKmInput, setCustomKmInput] = useState<string>('');
+
+  useEffect(() => {
+    setData(initialData);
+  }, [initialData]);
 
   if (!isOpen) return null;
 
@@ -18,6 +24,23 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({ isOpen, onCl
     const newData = { ...data, [key]: currentMileage };
     setData(newData);
     onSave(newData);
+  };
+
+  const handleStartCustomEdit = (key: keyof MaintenanceData, currentVal: number) => {
+    setEditingKey(key);
+    setCustomKmInput(currentVal > 0 ? currentVal.toString() : currentMileage.toString());
+  };
+
+  const handleSaveCustomKm = (key: keyof MaintenanceData) => {
+    const val = parseInt(customKmInput, 10);
+    if (isNaN(val) || val < 0) {
+      alert('Informe uma quilometragem válida');
+      return;
+    }
+    const newData = { ...data, [key]: val };
+    setData(newData);
+    onSave(newData);
+    setEditingKey(null);
   };
 
   const items = [
@@ -58,16 +81,57 @@ export const MaintenanceModal: React.FC<MaintenanceModalProps> = ({ isOpen, onCl
                 <div key={item.id} className="bg-gray-800/50 p-4 rounded-xl border border-gray-800">
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h3 className="font-bold text-white text-sm">{item.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-white text-sm">{item.name}</h3>
+                        {lastKm === currentMileage && (
+                          <span className="text-[9px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.5 rounded border border-emerald-500/40">
+                            Recém-feito
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-500">Intervalo: {item.interval.toLocaleString('pt-BR')} km</p>
                     </div>
-                    <button
-                      onClick={() => handleUpdate(item.id as keyof MaintenanceData)}
-                      className="bg-green-600 hover:bg-green-500 text-white text-[10px] uppercase tracking-wider font-extrabold px-3 py-1.5 rounded-lg transition-colors border border-green-500/20"
-                    >
-                      Atualizar Agora
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleStartCustomEdit(item.id as keyof MaintenanceData, lastKm)}
+                        className="bg-gray-700 hover:bg-gray-600 text-gray-200 text-[10px] font-bold px-2 py-1.5 rounded-lg transition-colors border border-white/5"
+                        title="Informar outro KM"
+                      >
+                        ✎ KM
+                      </button>
+                      <button
+                        onClick={() => handleUpdate(item.id as keyof MaintenanceData)}
+                        className="bg-green-600 hover:bg-green-500 text-white text-[10px] uppercase tracking-wider font-extrabold px-3 py-1.5 rounded-lg transition-colors border border-green-500/20"
+                        title={`Definir como feito no KM atual (${currentMileage.toLocaleString('pt-BR')} km)`}
+                      >
+                        Feito no KM Atual
+                      </button>
+                    </div>
                   </div>
+
+                  {editingKey === item.id && (
+                    <div className="bg-gray-900/90 p-3 rounded-lg border border-gray-700 mb-3 flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={customKmInput}
+                        onChange={(e) => setCustomKmInput(e.target.value)}
+                        placeholder="Ex: 153986"
+                        className="bg-gray-950 border border-gray-600 rounded px-2.5 py-1 text-xs text-white flex-grow focus:outline-none focus:border-emerald-500"
+                      />
+                      <button
+                        onClick={() => handleSaveCustomKm(item.id as keyof MaintenanceData)}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold px-3 py-1 rounded"
+                      >
+                        Salvar
+                      </button>
+                      <button
+                        onClick={() => setEditingKey(null)}
+                        className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] px-2 py-1 rounded"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs">

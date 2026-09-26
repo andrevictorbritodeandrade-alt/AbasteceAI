@@ -21,6 +21,7 @@ import { CloudSyncModal } from './components/CloudSyncModal';
 import { DrivingTips } from './components/DrivingTips';
 import { FuelMarketIndex } from './components/FuelMarketIndex';
 import { FavoriteStations } from './components/FavoriteStations';
+import { OdometerModal } from './components/OdometerModal';
 import { 
   PlusIcon, 
   CalculatorIcon, 
@@ -57,9 +58,8 @@ const getInitialSeedData = (): RawFuelEntry[] => {
     { id: 'm5', date: new Date('2026-05-26T12:00:00Z'), totalValue: 309.30, pricePerLiter: 6.39, kmEnd: 145970, fuelType: FuelType.GASOLINE, notes: '' },
     { id: 'm6', date: new Date('2026-05-30T12:00:00Z'), totalValue: 113.70, pricePerLiter: 6.43, kmEnd: 145970, fuelType: FuelType.GASOLINE, notes: '' },
     { id: '11', date: new Date('2026-07-25T19:21:00Z'), totalValue: 50.00, pricePerLiter: 6.59, kmEnd: 149088, fuelType: FuelType.GASOLINE, notes: 'Posto ipiranga do queijão' },
-    { id: 'sep1', date: new Date('2026-09-03T10:00:00Z'), totalValue: 130.00, pricePerLiter: 6.59, kmEnd: 149680, fuelType: FuelType.GASOLINE, notes: 'Posto Shell Alvorada - Setembro' },
-    { id: 'sep2', date: new Date('2026-09-12T15:00:00Z'), totalValue: 145.00, pricePerLiter: 6.65, kmEnd: 150350, fuelType: FuelType.GASOLINE, notes: 'Posto Ipiranga - Setembro' },
-    { id: 'sep3', date: new Date('2026-09-18T11:20:00Z'), totalValue: 110.00, pricePerLiter: 6.60, kmEnd: 150820, fuelType: FuelType.GASOLINE, notes: 'Posto Shell - Setembro' },
+    { id: 'sep4', date: new Date('2026-09-04T12:00:00Z'), totalValue: 318.56, pricePerLiter: 6.789428815, kmEnd: 152125, fuelType: FuelType.GASOLINE, isFull: true, notes: 'Posto Ipiranga da Avenida - Consumo real: 16,03 km/L' },
+    { id: 'sep5', date: new Date('2026-09-12T12:00:00Z'), totalValue: 100.00, pricePerLiter: 6.269592476, kmEnd: 152753, fuelType: FuelType.GASOLINE, isFull: false, notes: 'Carrefour - Distância percorrida: 628 km' },
   ];
 };
 
@@ -73,16 +73,17 @@ const getCurrentMonthString = (): string => {
 const App: React.FC = () => {
   const [localRawEntries, setLocalRawEntries] = useState<RawFuelEntry[]>([]);
   const [localMaintenanceData, setLocalMaintenanceData] = useState<MaintenanceData>({
-    oil: 0,
-    tires: 0,
-    engine: 0,
-    brakes: 0,
-    fuelFilter: 0,
-    airFilter: 0,
-    cabinFilter: 0,
-    coolant: 0,
-    sparkPlugs: 0,
-    timingBelt: 0,
+    oil: 153986,
+    tires: 145000,
+    engine: 140000,
+    brakes: 142000,
+    fuelFilter: 145000,
+    airFilter: 145000,
+    cabinFilter: 145000,
+    coolant: 140000,
+    sparkPlugs: 140000,
+    timingBelt: 135000,
+    currentOdometer: 153986,
   });
   const [localReminders, setLocalReminders] = useState<Reminder[]>([]);
   const [localFavoriteStations, setLocalFavoriteStations] = useState<FavoriteStation[]>([]);
@@ -116,19 +117,22 @@ const App: React.FC = () => {
   const reminders = fbReminders.length > 0 ? fbReminders : localReminders;
   const favoriteStations = fbFavoriteStations.length > 0 ? fbFavoriteStations : localFavoriteStations;
 
-  const [activeModal, setActiveModal] = useState<'entry' | 'trip' | 'maintenance' | 'detail' | 'reminders' | 'comparison' | 'prediction' | 'sync' | null>(null);
+  const [activeModal, setActiveModal] = useState<'entry' | 'trip' | 'maintenance' | 'detail' | 'reminders' | 'comparison' | 'prediction' | 'sync' | 'odometer' | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<ProcessedFuelEntry | null>(null);
   const [entryToEdit, setEntryToEdit] = useState<RawFuelEntry | null>(null);
-  const [monthFilter, setMonthFilter] = useState<string>('all');
+  const [monthFilter, setMonthFilter] = useState<string>(getCurrentMonthString());
 
   useEffect(() => {
     try {
       const storedEntries = localStorage.getItem('fuelEntries') || localStorage.getItem('cached_cloud_entries');
       if (storedEntries) {
-        const parsed = JSON.parse(storedEntries).map((e: any) => ({
-          ...e,
-          date: new Date(e.date),
-        }));
+        const obsoleteIds = ['sep1', 'sep2', 'sep3'];
+        const parsed = JSON.parse(storedEntries)
+          .filter((e: any) => !obsoleteIds.includes(e.id))
+          .map((e: any) => ({
+            ...e,
+            date: new Date(e.date),
+          }));
         
         // Ensure all seed data entries are present
         const seedData = getInitialSeedData();
@@ -147,7 +151,14 @@ const App: React.FC = () => {
       if (storedMaintenance) {
         try {
           const parsed = JSON.parse(storedMaintenance);
+          if (!parsed.oil || parsed.oil < 153986) {
+            parsed.oil = 153986;
+          }
+          if (!parsed.currentOdometer || parsed.currentOdometer < 153986) {
+            parsed.currentOdometer = 153986;
+          }
           setLocalMaintenanceData(prev => ({ ...prev, ...parsed }));
+          localStorage.setItem('maintenanceData', JSON.stringify(parsed));
         } catch (e) {
           console.error("Erro ao fazer parse de maintenanceData", e);
         }
@@ -330,8 +341,13 @@ const App: React.FC = () => {
   }, [rawEntries]);
 
   const currentMileage = useMemo(() => {
-    return rawEntries.length > 0 ? Math.max(...rawEntries.map(e => e.kmEnd)) : 0;
-  }, [rawEntries]);
+    const fromEntries = rawEntries.length > 0 ? Math.max(...rawEntries.map(e => e.kmEnd)) : 0;
+    const fromMaintenance = Math.max(
+      maintenanceData?.currentOdometer || 0,
+      maintenanceData?.oil || 0
+    );
+    return Math.max(fromEntries, fromMaintenance, 153986);
+  }, [rawEntries, maintenanceData]);
 
   const fuelAverages = useMemo(() => {
     const getEffectiveKmpl = (e: ProcessedFuelEntry) => e.avgKmplReal && e.avgKmplReal > 0 ? e.avgKmplReal : e.avgKmpl;
@@ -522,6 +538,19 @@ const App: React.FC = () => {
       await saveMaintenance(data);
     }
   }, [user, saveMaintenance]);
+
+  const handleSaveOdometer = useCallback(async (newKm: number) => {
+    const updatedMaintenance: MaintenanceData = {
+      ...maintenanceData,
+      currentOdometer: newKm,
+    };
+    setLocalMaintenanceData(updatedMaintenance);
+    if (user) {
+      await saveMaintenance(updatedMaintenance);
+    } else {
+      localStorage.setItem('maintenanceData', JSON.stringify(updatedMaintenance));
+    }
+  }, [maintenanceData, user, saveMaintenance]);
 
   const handleImportJSON = useCallback(async (data: {
     entries: RawFuelEntry[];
@@ -766,9 +795,12 @@ const App: React.FC = () => {
             <StatsCard 
               icon={<RoadIcon className="text-emerald-400" />} 
               label="KM Atual" 
-              value={currentMileage.toLocaleString('pt-BR')} 
+              value={`${currentMileage.toLocaleString('pt-BR')} km`} 
               pulseTrigger={currentMileage}
               colorScheme="green"
+              onClick={() => setActiveModal('odometer')}
+              subtext="Óleo trocado em 153.986 km"
+              badge="Ajustar"
             />
             <StatsCard 
               icon={<DollarSignIcon className="text-rose-400" />} 
@@ -1197,6 +1229,17 @@ const App: React.FC = () => {
           isOpen={true} 
           onClose={handleCloseModal} 
           overallAvgKmpl={displayStats.averageKmpl} 
+        />
+      )}
+      {activeModal === 'odometer' && (
+        <OdometerModal
+          isOpen={true}
+          onClose={handleCloseModal}
+          currentMileage={currentMileage}
+          maintenanceData={maintenanceData}
+          onSaveOdometer={handleSaveOdometer}
+          onSaveMaintenance={handleSaveMaintenance}
+          onOpenMaintenanceModal={() => setActiveModal('maintenance')}
         />
       )}
       {activeModal === 'maintenance' && (

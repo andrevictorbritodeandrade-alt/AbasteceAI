@@ -36,6 +36,7 @@ export interface MaintenanceData {
   coolant: number;
   sparkPlugs: number;
   timingBelt: number;
+  currentOdometer?: number;
 }
 
 export interface Reminder {

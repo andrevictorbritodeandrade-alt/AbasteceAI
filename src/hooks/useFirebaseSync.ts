@@ -85,9 +85,8 @@ export const getInitialSeedData = (): RawFuelEntry[] => [
   { id: 'm5', date: new Date('2026-05-26T12:00:00Z'), totalValue: 309.30, pricePerLiter: 6.39, kmEnd: 145970, fuelType: FuelType.GASOLINE, notes: '' },
   { id: 'm6', date: new Date('2026-05-30T12:00:00Z'), totalValue: 113.70, pricePerLiter: 6.43, kmEnd: 145970, fuelType: FuelType.GASOLINE, notes: '' },
   { id: '11', date: new Date('2026-07-25T19:21:00Z'), totalValue: 50.00, pricePerLiter: 6.59, kmEnd: 149088, fuelType: FuelType.GASOLINE, notes: 'Posto ipiranga do queijão' },
-  { id: 'sep1', date: new Date('2026-09-03T10:00:00Z'), totalValue: 130.00, pricePerLiter: 6.59, kmEnd: 149680, fuelType: FuelType.GASOLINE, notes: 'Posto Shell Alvorada - Setembro' },
-  { id: 'sep2', date: new Date('2026-09-12T15:00:00Z'), totalValue: 145.00, pricePerLiter: 6.65, kmEnd: 150350, fuelType: FuelType.GASOLINE, notes: 'Posto Ipiranga - Setembro' },
-  { id: 'sep3', date: new Date('2026-09-18T11:20:00Z'), totalValue: 110.00, pricePerLiter: 6.60, kmEnd: 150820, fuelType: FuelType.GASOLINE, notes: 'Posto Shell - Setembro' },
+  { id: 'sep4', date: new Date('2026-09-04T12:00:00Z'), totalValue: 318.56, pricePerLiter: 6.789428815, kmEnd: 152125, fuelType: FuelType.GASOLINE, isFull: true, notes: 'Posto Ipiranga da Avenida - Consumo real: 16,03 km/L' },
+  { id: 'sep5', date: new Date('2026-09-12T12:00:00Z'), totalValue: 100.00, pricePerLiter: 6.269592476, kmEnd: 152753, fuelType: FuelType.GASOLINE, isFull: false, notes: 'Carrefour - Distância percorrida: 628 km' },
 ];
 
 export const defaultStationsData: FavoriteStation[] = [
@@ -112,7 +111,7 @@ export const defaultStationsData: FavoriteStation[] = [
 ];
 
 export const defaultMaintenanceData: MaintenanceData = {
-  oil: 149088,
+  oil: 153986,
   tires: 145000,
   engine: 140000,
   brakes: 142000,
@@ -122,6 +121,7 @@ export const defaultMaintenanceData: MaintenanceData = {
   coolant: 140000,
   sparkPlugs: 140000,
   timingBelt: 135000,
+  currentOdometer: 153986,
 };
 
 const parseEntryDate = (val: any): Date => {
@@ -163,7 +163,16 @@ export function useFirebaseSync() {
   const [maintenance, setMaintenance] = useState<MaintenanceData>(() => {
     try {
       const cached = localStorage.getItem('cached_cloud_maintenance') || localStorage.getItem('maintenanceData');
-      if (cached) return JSON.parse(cached);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (!parsed.oil || parsed.oil < 153986) {
+          parsed.oil = 153986;
+        }
+        if (!parsed.currentOdometer || parsed.currentOdometer < 153986) {
+          parsed.currentOdometer = 153986;
+        }
+        return parsed;
+      }
     } catch (e) {
       console.error(e);
     }
@@ -274,19 +283,52 @@ export function useFirebaseSync() {
         return;
       }
 
-      const cloudData = snap.docs.map(d => {
-        const val = d.data();
-        return {
-          ...val,
-          id: d.id,
-          date: parseEntryDate(val.date),
-        } as RawFuelEntry;
+      const obsoleteIds = ['sep1', 'sep2', 'sep3'];
+      obsoleteIds.forEach(obsId => {
+        if (snap.docs.some(d => d.id === obsId)) {
+          deleteDoc(doc(db, 'entries', obsId)).catch(() => {});
+        }
       });
 
+      const cloudData = snap.docs
+        .filter(d => !obsoleteIds.includes(d.id))
+        .map(d => {
+          const val = d.data();
+          return {
+            ...val,
+            id: d.id,
+            date: parseEntryDate(val.date),
+          } as RawFuelEntry;
+        });
+
       if (cloudData.length > 0) {
-        setEntries(cloudData);
-        localStorage.setItem('cached_cloud_entries', JSON.stringify(cloudData));
-        localStorage.setItem('fuelEntries', JSON.stringify(cloudData));
+        const seeds = getInitialSeedData();
+        const missingSeeds = seeds.filter(s => !cloudData.some(c => c.id === s.id));
+        let mergedData = [...cloudData];
+        if (missingSeeds.length > 0) {
+          mergedData = [...cloudData, ...missingSeeds];
+          if (!isSeedingRef.current) {
+            isSeedingRef.current = true;
+            try {
+              const batch = writeBatch(db);
+              missingSeeds.forEach(s => {
+                const docRef = doc(db, 'entries', s.id);
+                batch.set(docRef, {
+                  ...s,
+                  date: s.date instanceof Date ? s.date.toISOString() : s.date
+                });
+              });
+              batch.commit().catch(console.warn).finally(() => {
+                isSeedingRef.current = false;
+              });
+            } catch (err) {
+              isSeedingRef.current = false;
+            }
+          }
+        }
+        setEntries(mergedData);
+        localStorage.setItem('cached_cloud_entries', JSON.stringify(mergedData));
+        localStorage.setItem('fuelEntries', JSON.stringify(mergedData));
       }
       setIsCloudLoaded(true);
       setSyncStatus(navigator.onLine ? 'synced' : 'offline');
@@ -296,13 +338,36 @@ export function useFirebaseSync() {
     });
 
     // 2. Real-time listener for maintenance
-    const unsubMaintenance = onSnapshot(doc(db, 'maintenance', 'current'), (snap) => {
+    const unsubMaintenance = onSnapshot(doc(db, 'maintenance', 'current'), async (snap) => {
       if (!active) return;
       if (snap.exists()) {
         const data = snap.data() as MaintenanceData;
-        setMaintenance(data);
-        localStorage.setItem('cached_cloud_maintenance', JSON.stringify(data));
-        localStorage.setItem('maintenanceData', JSON.stringify(data));
+        let needsCloudUpdate = false;
+        const updated = { ...data };
+        if (!updated.oil || updated.oil < 153986) {
+          updated.oil = 153986;
+          needsCloudUpdate = true;
+        }
+        if (!updated.currentOdometer || updated.currentOdometer < 153986) {
+          updated.currentOdometer = 153986;
+          needsCloudUpdate = true;
+        }
+        setMaintenance(updated);
+        localStorage.setItem('cached_cloud_maintenance', JSON.stringify(updated));
+        localStorage.setItem('maintenanceData', JSON.stringify(updated));
+        if (needsCloudUpdate) {
+          try {
+            await setDoc(doc(db, 'maintenance', 'current'), updated);
+          } catch (e) {
+            console.warn("Auto-syncing maintenance oil/odometer:", e);
+          }
+        }
+      } else {
+        const initData = { ...defaultMaintenanceData };
+        setMaintenance(initData);
+        localStorage.setItem('cached_cloud_maintenance', JSON.stringify(initData));
+        localStorage.setItem('maintenanceData', JSON.stringify(initData));
+        setDoc(doc(db, 'maintenance', 'current'), initData).catch(console.warn);
       }
     }, (err) => {
       handleFirestoreError(err, OperationType.GET, 'maintenance/current');

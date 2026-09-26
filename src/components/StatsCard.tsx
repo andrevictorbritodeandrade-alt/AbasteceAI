@@ -9,6 +9,10 @@ interface StatsCardProps {
   value: string;
   pulseTrigger?: number;
   colorScheme?: CardColorScheme;
+  onClick?: () => void;
+  clickable?: boolean;
+  subtext?: string;
+  badge?: string;
 }
 
 const colorStyles: Record<CardColorScheme, { bg: string; border: string; glow: string; dot: string }> = {
@@ -55,7 +59,10 @@ export const StatsCard: React.FC<StatsCardProps> = ({
   label, 
   value, 
   pulseTrigger,
-  colorScheme = 'blue'
+  colorScheme = 'blue',
+  onClick,
+  subtext,
+  badge
 }) => {
   const controls = useAnimation();
   const isFirstRender = useRef(true);
@@ -86,7 +93,14 @@ export const StatsCard: React.FC<StatsCardProps> = ({
 
   return (
     <motion.div animate={controls} className="w-full h-full">
-      <div className={`p-4 flex flex-col gap-2 rounded-2xl border backdrop-blur-md transition-all duration-300 h-full relative overflow-hidden shadow-lg ${style.bg} ${style.border}`}>
+      <div 
+        onClick={onClick}
+        role={onClick ? "button" : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        className={`p-4 flex flex-col gap-2 rounded-2xl border backdrop-blur-md transition-all duration-300 h-full relative overflow-hidden shadow-lg ${
+          onClick ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : ''
+        } ${style.bg} ${style.border}`}
+      >
         {shouldAnimateGlow && (
           <motion.div
             initial={{ opacity: 0, scale: 0.5 }}
@@ -98,11 +112,28 @@ export const StatsCard: React.FC<StatsCardProps> = ({
         )}
         <div className="flex items-center justify-between relative z-10">
           <div className="text-xl">{icon}</div>
-          <div className={`w-1.5 h-1.5 rounded-full ${style.dot} opacity-70`}></div>
+          <div className="flex items-center gap-1.5">
+            {badge && (
+              <span className="text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                {badge}
+              </span>
+            )}
+            <div className={`w-1.5 h-1.5 rounded-full ${style.dot} opacity-70`}></div>
+          </div>
         </div>
         <div className="relative z-10">
-          <p className="text-[10px] text-gray-400 uppercase font-black tracking-wider mb-1 font-display">{label}</p>
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] text-gray-400 uppercase font-black tracking-wider mb-1 font-display">{label}</p>
+            {onClick && (
+              <span className="text-[9px] text-emerald-400/80 font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                Editar ✎
+              </span>
+            )}
+          </div>
           <p className="text-xl font-display font-extrabold text-white tracking-tight leading-tight">{value}</p>
+          {subtext && (
+            <p className="text-[9px] text-gray-400 mt-1 font-medium">{subtext}</p>
+          )}
         </div>
       </div>
     </motion.div>

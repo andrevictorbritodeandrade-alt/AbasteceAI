@@ -30,7 +30,8 @@
         "cabinFilter": { "type": "number", "description": "Last cabin filter change KM" },
         "coolant": { "type": "number", "description": "Last coolant flush KM" },
         "sparkPlugs": { "type": "number", "description": "Last spark plugs replacement KM" },
-        "timingBelt": { "type": "number", "description": "Last timing belt replacement KM" }
+        "timingBelt": { "type": "number", "description": "Last timing belt replacement KM" },
+        "currentOdometer": { "type": "number", "description": "Current registered vehicle odometer reading in KM" }
       }
     },
     "Reminder": {
