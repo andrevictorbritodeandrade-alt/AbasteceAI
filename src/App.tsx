@@ -36,7 +36,8 @@ import {
   BellIcon,
   ChartIcon,
   LightbulbIcon,
-  CoinsIcon
+  CoinsIcon,
+  XIcon
 } from './components/Icons';
 
 const getInitialSeedData = (): RawFuelEntry[] => {
@@ -60,14 +61,38 @@ const getInitialSeedData = (): RawFuelEntry[] => {
     { id: '11', date: new Date('2026-07-25T19:21:00Z'), totalValue: 50.00, pricePerLiter: 6.59, kmEnd: 149088, fuelType: FuelType.GASOLINE, notes: 'Posto ipiranga do queijão' },
     { id: 'sep4', date: new Date('2026-09-04T12:00:00Z'), totalValue: 318.56, pricePerLiter: 6.789428815, kmEnd: 152125, fuelType: FuelType.GASOLINE, isFull: true, notes: 'Posto Ipiranga da Avenida - Consumo real: 16,03 km/L' },
     { id: 'sep5', date: new Date('2026-09-12T12:00:00Z'), totalValue: 100.00, pricePerLiter: 6.269592476, kmEnd: 152753, fuelType: FuelType.GASOLINE, isFull: false, notes: 'Carrefour - Distância percorrida: 628 km' },
+    { id: 'oct1', date: new Date('2026-10-09T15:00:00Z'), totalValue: 50.00, pricePerLiter: 6.59, kmEnd: 154765, fuelType: FuelType.GASOLINE, isFull: false, notes: 'Posto Ipiranga da Avenida Automóvel Clube' },
   ];
 };
 
-const getCurrentMonthString = (): string => {
+export const getCurrentMonthKey = (): string => {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
   return `${year}-${month}`;
+};
+
+export const getMonthKey = (dateInput: Date | any): string => {
+  if (!dateInput) return getCurrentMonthKey();
+  const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  if (isNaN(d.getTime())) return getCurrentMonthKey();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return `${year}-${month}`;
+};
+
+export const formatMonthName = (monthKey: string, short = false): string => {
+  try {
+    const [year, month] = monthKey.split('-').map(Number);
+    const date = new Date(year, (month || 1) - 1, 15);
+    if (short) {
+      return date.toLocaleString('pt-BR', { month: 'short' }).toUpperCase() + '/' + String(year).slice(-2);
+    }
+    const monthName = date.toLocaleString('pt-BR', { month: 'long' });
+    return `${monthName.charAt(0).toUpperCase() + monthName.slice(1)} de ${year}`;
+  } catch (e) {
+    return monthKey;
+  }
 };
 
 const App: React.FC = () => {
@@ -83,7 +108,7 @@ const App: React.FC = () => {
     coolant: 140000,
     sparkPlugs: 140000,
     timingBelt: 135000,
-    currentOdometer: 153986,
+    currentOdometer: 154765,
   });
   const [localReminders, setLocalReminders] = useState<Reminder[]>([]);
   const [localFavoriteStations, setLocalFavoriteStations] = useState<FavoriteStation[]>([]);
@@ -111,16 +136,44 @@ const App: React.FC = () => {
   } = useFirebaseSync();
 
   // Live Multi-Device Real-Time Synchronization:
-  // All devices immediately reflect shared vehicle records stored in Firestore
-  const rawEntries = fbEntries.length > 0 ? fbEntries : (localRawEntries.length > 0 ? localRawEntries : getInitialSeedData());
-  const maintenanceData = (fbMaintenance && fbMaintenance.oil > 0) ? fbMaintenance : localMaintenanceData;
+  // Merges local and cloud records by ID so no user entry is ever lost or bypassed
+  const rawEntries = useMemo(() => {
+    const map = new Map<string, RawFuelEntry>();
+    // 1. Initial seeds as baseline
+    getInitialSeedData().forEach(item => map.set(item.id, item));
+    // 2. Add locally stored entries
+    localRawEntries.forEach(item => map.set(item.id, item));
+    // 3. Add entries from Firebase real-time sync hook
+    fbEntries.forEach(item => map.set(item.id, item));
+    return Array.from(map.values());
+  }, [fbEntries, localRawEntries]);
+
+  const maintenanceData = useMemo(() => {
+    const base = { ...localMaintenanceData };
+    if (fbMaintenance && fbMaintenance.oil > 0) {
+      return {
+        ...base,
+        ...fbMaintenance,
+        oil: Math.max(base.oil || 0, fbMaintenance.oil || 0, 153986),
+        currentOdometer: Math.max(base.currentOdometer || 0, fbMaintenance.currentOdometer || 0, 154765),
+      };
+    }
+    return base;
+  }, [fbMaintenance, localMaintenanceData]);
+
   const reminders = fbReminders.length > 0 ? fbReminders : localReminders;
   const favoriteStations = fbFavoriteStations.length > 0 ? fbFavoriteStations : localFavoriteStations;
+
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [activeModal, setActiveModal] = useState<'entry' | 'trip' | 'maintenance' | 'detail' | 'reminders' | 'comparison' | 'prediction' | 'sync' | 'odometer' | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<ProcessedFuelEntry | null>(null);
   const [entryToEdit, setEntryToEdit] = useState<RawFuelEntry | null>(null);
-  const [monthFilter, setMonthFilter] = useState<string>(getCurrentMonthString());
+  
+  // Navigation: 'current' (Mês Vigente) or 'history' (Histórico Automático)
+  const [entriesViewTab, setEntriesViewTab] = useState<'current' | 'history'>('current');
+  const [historyMonthFilter, setHistoryMonthFilter] = useState<string>('all_history');
+  const [statsScope, setStatsScope] = useState<'current' | 'all'>('current');
 
   useEffect(() => {
     try {
@@ -143,8 +196,10 @@ const App: React.FC = () => {
         });
         
         setLocalRawEntries(parsed);
+        localStorage.setItem('fuelEntries', JSON.stringify(parsed));
       } else {
         setLocalRawEntries(getInitialSeedData());
+        localStorage.setItem('fuelEntries', JSON.stringify(getInitialSeedData()));
       }
 
       const storedMaintenance = localStorage.getItem('maintenanceData') || localStorage.getItem('cached_cloud_maintenance');
@@ -154,8 +209,8 @@ const App: React.FC = () => {
           if (!parsed.oil || parsed.oil < 153986) {
             parsed.oil = 153986;
           }
-          if (!parsed.currentOdometer || parsed.currentOdometer < 153986) {
-            parsed.currentOdometer = 153986;
+          if (!parsed.currentOdometer || parsed.currentOdometer < 154765) {
+            parsed.currentOdometer = 154765;
           }
           setLocalMaintenanceData(prev => ({ ...prev, ...parsed }));
           localStorage.setItem('maintenanceData', JSON.stringify(parsed));
@@ -346,7 +401,7 @@ const App: React.FC = () => {
       maintenanceData?.currentOdometer || 0,
       maintenanceData?.oil || 0
     );
-    return Math.max(fromEntries, fromMaintenance, 153986);
+    return Math.max(fromEntries, fromMaintenance, 154765);
   }, [rawEntries, maintenanceData]);
 
   const fuelAverages = useMemo(() => {
@@ -376,32 +431,59 @@ const App: React.FC = () => {
     };
   }, [processedEntries]);
 
-  const filteredEntries = useMemo(() => {
-    if (monthFilter === 'all') return processedEntries;
-    return processedEntries.filter(e => {
-      const entryMonth = `${e.date.getUTCFullYear()}-${String(e.date.getUTCMonth() + 1).padStart(2, '0')}`;
-      return entryMonth === monthFilter;
-    });
-  }, [processedEntries, monthFilter]);
+  const currentMonthKey = useMemo(() => getCurrentMonthKey(), []);
 
-  const displayStats = useMemo(() => {
-    const totalSpent = filteredEntries.reduce((sum, e) => sum + e.totalValue, 0);
-    const entriesForConsumption = filteredEntries.filter(e => e.distance > 0 || (e.avgKmplReal && e.avgKmplReal > 0));
-    const totalDistance = filteredEntries.filter(e => e.distance > 0).reduce((sum, e) => sum + e.distance, 0);
-    
-    const entriesWithKmpl = filteredEntries.filter(e => (e.avgKmplReal && e.avgKmplReal > 0) || e.avgKmpl > 0);
+  // Abastecimentos estritamente do mês vigente
+  const currentMonthEntries = useMemo(() => {
+    return processedEntries.filter(e => getMonthKey(e.date) === currentMonthKey);
+  }, [processedEntries, currentMonthKey]);
+
+  // Abastecimentos anteriores registrados automaticamente no histórico
+  const historyEntries = useMemo(() => {
+    return processedEntries.filter(e => getMonthKey(e.date) !== currentMonthKey);
+  }, [processedEntries, currentMonthKey]);
+
+  // Meses anteriores disponíveis no histórico
+  const availableHistoryMonths = useMemo(() => {
+    const months = new Set(historyEntries.map(e => getMonthKey(e.date)));
+    return Array.from(months).sort((a: string, b: string) => b.localeCompare(a));
+  }, [historyEntries]);
+
+  // Entradas ativas para exibição de acordo com a aba e o filtro
+  const displayedEntries = useMemo(() => {
+    if (entriesViewTab === 'current') {
+      return currentMonthEntries;
+    }
+    if (historyMonthFilter === 'all_history') {
+      return historyEntries;
+    }
+    return historyEntries.filter(e => getMonthKey(e.date) === historyMonthFilter);
+  }, [entriesViewTab, currentMonthEntries, historyEntries, historyMonthFilter]);
+
+  // Estatísticas do Mês Vigente
+  const currentMonthStats = useMemo(() => {
+    const totalSpent = currentMonthEntries.reduce((sum, e) => sum + e.totalValue, 0);
+    const totalDistance = currentMonthEntries.filter(e => e.distance > 0).reduce((sum, e) => sum + e.distance, 0);
+    const entriesWithKmpl = currentMonthEntries.filter(e => (e.avgKmplReal && e.avgKmplReal > 0) || e.avgKmpl > 0);
     const averageKmpl = entriesWithKmpl.length > 0
       ? entriesWithKmpl.reduce((sum, e) => sum + (e.avgKmplReal && e.avgKmplReal > 0 ? e.avgKmplReal : e.avgKmpl), 0) / entriesWithKmpl.length
       : 0;
-
     return { totalSpent, totalDistance, averageKmpl };
-  }, [filteredEntries]);
+  }, [currentMonthEntries]);
 
-  const availableMonths = useMemo(() => {
-    const months = new Set(processedEntries.map(e => `${e.date.getUTCFullYear()}-${String(e.date.getUTCMonth() + 1).padStart(2, '0')}`));
-    months.add(getCurrentMonthString());
-    return Array.from(months).sort((a: string, b: string) => b.localeCompare(a));
+  // Estatísticas Gerais Acumuladas
+  const allTimeStats = useMemo(() => {
+    const totalSpent = processedEntries.reduce((sum, e) => sum + e.totalValue, 0);
+    const totalDistance = processedEntries.filter(e => e.distance > 0).reduce((sum, e) => sum + e.distance, 0);
+    const entriesWithKmpl = processedEntries.filter(e => (e.avgKmplReal && e.avgKmplReal > 0) || e.avgKmpl > 0);
+    const averageKmpl = entriesWithKmpl.length > 0
+      ? entriesWithKmpl.reduce((sum, e) => sum + (e.avgKmplReal && e.avgKmplReal > 0 ? e.avgKmplReal : e.avgKmpl), 0) / entriesWithKmpl.length
+      : 0;
+    return { totalSpent, totalDistance, averageKmpl };
   }, [processedEntries]);
+
+  // Estatísticas para os cards superiores
+  const displayStats = statsScope === 'current' ? currentMonthStats : allTimeStats;
 
   const overallAverageKmpl = useMemo(() => {
     const entriesForConsumption = processedEntries.filter(e => e.distance > 0);
@@ -511,33 +593,87 @@ const App: React.FC = () => {
   }, []);
 
   const handleSaveEntry = useCallback(async (entryData: Omit<RawFuelEntry, 'id'> & { id?: string }) => {
-    const e = { ...entryData, id: entryData.id || Date.now().toString() } as RawFuelEntry;
+    const id = entryData.id || `entry-${Date.now()}`;
+    const e = { 
+      ...entryData, 
+      id,
+      date: entryData.date instanceof Date 
+        ? entryData.date 
+        : (entryData.date as any)?.seconds 
+        ? new Date((entryData.date as any).seconds * 1000)
+        : new Date(entryData.date as any)
+    } as RawFuelEntry;
+
+    // 1. Atualização imediata no estado local e persistência permanente no LocalStorage
     setLocalRawEntries(prev => {
-      if (entryData.id) {
-        return prev.map(item => item.id === entryData.id ? e : item);
-      }
-      return [...prev, e];
+      const idx = prev.findIndex(item => item.id === e.id);
+      const updated = idx >= 0 ? prev.map(item => item.id === e.id ? e : item) : [e, ...prev];
+      localStorage.setItem('fuelEntries', JSON.stringify(updated));
+      return updated;
     });
-    if (user) {
-      await saveEntry(e);
+
+    // 2. Atualizar odômetro automaticamente se o km do abastecimento for maior
+    if (e.kmEnd && e.kmEnd > (maintenanceData.currentOdometer || 0)) {
+      const updatedMaintenance: MaintenanceData = {
+        ...maintenanceData,
+        currentOdometer: e.kmEnd,
+      };
+      setLocalMaintenanceData(updatedMaintenance);
+      localStorage.setItem('maintenanceData', JSON.stringify(updatedMaintenance));
+      saveMaintenance(updatedMaintenance).catch(console.warn);
     }
+
+    // 3. Salvamento contínuo no Firestore na nuvem
+    try {
+      await saveEntry(e);
+    } catch (saveErr) {
+      console.warn("Salvamento contínuo em nuvem:", saveErr);
+    }
+
+    const currentKey = getCurrentMonthKey();
+    const entryKey = getMonthKey(e.date);
+
+    if (entryKey === currentKey) {
+      setToastMessage(`✓ Abastecimento de R$ ${e.totalValue.toFixed(2)} (${e.fuelType}) salvo no Mês Vigente e sincronizado!`);
+      setEntriesViewTab('current');
+    } else {
+      const monthLabel = formatMonthName(entryKey);
+      setToastMessage(`✓ Abastecimento de R$ ${e.totalValue.toFixed(2)} salvo e registrado automaticamente no Histórico (${monthLabel})!`);
+    }
+
+    setTimeout(() => setToastMessage(null), 4000);
     handleCloseModal();
-  }, [user, saveEntry, handleCloseModal]);
+  }, [saveEntry, maintenanceData, saveMaintenance, handleCloseModal]);
 
   const handleDeleteEntry = useCallback(async (id: string) => {
-    setLocalRawEntries(prev => prev.filter(e => e.id !== id));
-    if (user) {
+    setLocalRawEntries(prev => {
+      const updated = prev.filter(e => e.id !== id);
+      localStorage.setItem('fuelEntries', JSON.stringify(updated));
+      return updated;
+    });
+
+    try {
       await removeEntry(id);
+    } catch (removeErr) {
+      console.warn("Background sync warning on remove:", removeErr);
     }
+
+    setToastMessage('Registro excluído com sucesso.');
+    setTimeout(() => setToastMessage(null), 3000);
     handleCloseModal();
-  }, [user, removeEntry, handleCloseModal]);
+  }, [removeEntry, handleCloseModal]);
 
   const handleSaveMaintenance = useCallback(async (data: MaintenanceData) => {
     setLocalMaintenanceData(data);
-    if (user) {
+    localStorage.setItem('maintenanceData', JSON.stringify(data));
+    try {
       await saveMaintenance(data);
+    } catch (err) {
+      console.warn("Background sync maintenance warning:", err);
     }
-  }, [user, saveMaintenance]);
+    setToastMessage('Manutenções salvas com sucesso!');
+    setTimeout(() => setToastMessage(null), 3000);
+  }, [saveMaintenance]);
 
   const handleSaveOdometer = useCallback(async (newKm: number) => {
     const updatedMaintenance: MaintenanceData = {
@@ -545,12 +681,15 @@ const App: React.FC = () => {
       currentOdometer: newKm,
     };
     setLocalMaintenanceData(updatedMaintenance);
-    if (user) {
+    localStorage.setItem('maintenanceData', JSON.stringify(updatedMaintenance));
+    try {
       await saveMaintenance(updatedMaintenance);
-    } else {
-      localStorage.setItem('maintenanceData', JSON.stringify(updatedMaintenance));
+    } catch (err) {
+      console.warn("Background sync odometer warning:", err);
     }
-  }, [maintenanceData, user, saveMaintenance]);
+    setToastMessage(`Odômetro atualizado para ${newKm.toLocaleString('pt-BR')} km!`);
+    setTimeout(() => setToastMessage(null), 3500);
+  }, [maintenanceData, saveMaintenance]);
 
   const handleImportJSON = useCallback(async (data: {
     entries: RawFuelEntry[];
@@ -562,56 +701,53 @@ const App: React.FC = () => {
     setLocalMaintenanceData(data.maintenance);
     setLocalReminders(data.reminders);
     setLocalFavoriteStations(data.favoriteStations);
-    if (user) {
-      await migrateLocalData(data.entries, data.maintenance, data.reminders, data.favoriteStations);
-    }
-  }, [user, migrateLocalData]);
+    await migrateLocalData(data.entries, data.maintenance, data.reminders, data.favoriteStations);
+    setToastMessage('Dados importados com sucesso!');
+    setTimeout(() => setToastMessage(null), 3000);
+  }, [migrateLocalData]);
 
   const handleForceSyncCloud = useCallback(async () => {
-    if (user) {
-      await migrateLocalData(rawEntries, maintenanceData, reminders, favoriteStations);
-    } else {
+    await migrateLocalData(rawEntries, maintenanceData, reminders, favoriteStations);
+    if (!user) {
       await signIn();
     }
   }, [user, rawEntries, maintenanceData, reminders, favoriteStations, migrateLocalData, signIn]);
 
   const handleSaveReminders = useCallback(async (newReminders: Reminder[]) => {
-    // For syncing all reminders, we have to find what was added/removed.
-    // Simpler: if they add a single reminder, but here we replace the list.
-    // Let's just iterate and save them all. (This isn't optimal for deletions, but simple enough)
-    if (user) {
-      // Find deleted reminders
-      const deleted = localReminders.filter(old => !newReminders.find(n => n.id === old.id));
-      for (const d of deleted) {
-        await removeReminder(d.id);
-      }
-      for (const r of newReminders) {
-        await saveReminder(r);
-      }
-    } else {
-      setLocalReminders(newReminders);
+    setLocalReminders(newReminders);
+    localStorage.setItem('reminders', JSON.stringify(newReminders));
+    const deleted = localReminders.filter(old => !newReminders.find(n => n.id === old.id));
+    for (const d of deleted) {
+      await removeReminder(d.id).catch(console.warn);
     }
-  }, [user, localReminders, saveReminder, removeReminder]);
+    for (const r of newReminders) {
+      await saveReminder(r).catch(console.warn);
+    }
+    setToastMessage('Lembretes atualizados!');
+    setTimeout(() => setToastMessage(null), 3000);
+  }, [localReminders, saveReminder, removeReminder]);
 
   const handleAddStation = useCallback(async (newStation: Omit<FavoriteStation, 'id'>) => {
     const stationWithId: FavoriteStation = {
       ...newStation,
       id: `station-${Date.now()}`
     };
-    if (user) {
-      await saveStation(stationWithId);
-    } else {
-      setLocalFavoriteStations(prev => [...prev, stationWithId]);
-    }
-  }, [user, saveStation]);
+    setLocalFavoriteStations(prev => {
+      const updated = [...prev, stationWithId];
+      localStorage.setItem('favoriteStations', JSON.stringify(updated));
+      return updated;
+    });
+    await saveStation(stationWithId).catch(console.warn);
+  }, [saveStation]);
 
   const handleDeleteStation = useCallback(async (id: string) => {
-    if (user) {
-      await removeStation(id);
-    } else {
-      setLocalFavoriteStations(prev => prev.filter(s => s.id !== id));
-    }
-  }, [user, removeStation]);
+    setLocalFavoriteStations(prev => {
+      const updated = prev.filter(s => s.id !== id);
+      localStorage.setItem('favoriteStations', JSON.stringify(updated));
+      return updated;
+    });
+    await removeStation(id).catch(console.warn);
+  }, [removeStation]);
 
   const handleExportCSV = useCallback(() => {
     if (rawEntries.length === 0) {
@@ -734,50 +870,34 @@ const App: React.FC = () => {
       </header>
 
       <main className="max-w-4xl mx-auto p-4 pb-24 space-y-10">
-        {/* BANNER DE SINCRONIZAÇÃO EM TEMPO REAL MULTI-DISPOSITIVO */}
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-emerald-950/40 via-slate-900/80 to-emerald-950/40 border border-emerald-500/30 rounded-2xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg backdrop-blur-sm"
-        >
-          <div className="flex items-center gap-3 text-left">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center flex-shrink-0 text-emerald-400 shadow-sm">
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            </div>
-            <div>
-              <p className="text-xs font-black text-white tracking-wide flex items-center gap-2">
-                Sincronização Simultânea Ativa
-                <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30 font-extrabold uppercase">Tempo Real</span>
-              </p>
-              <p className="text-[11px] text-gray-300 mt-0.5">
-                {user 
-                  ? `Conectado como ${user.email}. Seus dados estão atualizados simultaneamente em todos os seus celulares e computadores.`
-                  : 'Seus dados estão conectados e sincronizados em tempo real. Qualquer aparelho que abrir o app exibirá as informações atualizadas.'}
-              </p>
-            </div>
-          </div>
-          {!user && (
-            <button
-              onClick={signIn}
-              className="w-full sm:w-auto whitespace-nowrap px-3.5 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold text-[11px] uppercase tracking-wider rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+        {/* FLOATING TOAST NOTIFICATION */}
+        <AnimatePresence>
+          {toastMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 bg-emerald-950/95 border border-emerald-400 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-xl text-xs font-bold"
             >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.761H12.545z"/>
-              </svg>
-              Vincular Google
-            </button>
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+              <span>{toastMessage}</span>
+            </motion.div>
           )}
-        </motion.div>
+        </AnimatePresence>
 
-        {user && (
-          <div className="bg-slate-900/60 border border-emerald-500/20 rounded-xl px-3.5 py-2 flex items-center justify-between text-[11px] text-gray-300">
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-              <span>Sincronizado com <strong className="text-emerald-300">{user.email || 'Conta Google'}</strong></span>
-            </div>
-            <span className="text-[10px] text-gray-400 hidden sm:inline">Atualização simultânea ativa</span>
+        {/* Status da Conta Vinculada & Nuvem */}
+        <div className="bg-slate-900/60 border border-emerald-500/20 rounded-2xl px-4 py-2.5 flex items-center justify-between text-xs text-gray-300 shadow-sm backdrop-blur-sm">
+          <div className="flex items-center gap-2.5">
+            <div className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+            <span className="font-medium">
+              Conta Vinculada: <strong className="text-emerald-300 font-bold">{user?.email || 'andrevictorbritodeandrade@gmail.com'}</strong>
+            </span>
           </div>
-        )}
+          <div className="flex items-center gap-2 text-[10px] text-emerald-400 font-extrabold uppercase tracking-wider">
+            <span className="hidden sm:inline">Sincronização em Tempo Real</span>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30">Nuvem Ativa</span>
+          </div>
+        </div>
         
         {/* SEÇÃO 1: PAINEL DE CONTROLE (INDICADORES COM CORES SUAVES) */}
         <motion.section 
@@ -787,10 +907,39 @@ const App: React.FC = () => {
           transition={{ duration: 0.5 }}
           className="space-y-4"
         >
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-black text-emerald-400 uppercase tracking-[0.25em] font-display">Painel de Controle</h2>
-            <div className="h-[2px] flex-grow mx-4 bg-gradient-to-r from-emerald-500/40 to-transparent"></div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xs font-black text-emerald-400 uppercase tracking-[0.25em] font-display">Painel de Controle</h2>
+              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                {statsScope === 'current' ? `Mês Vigente (${formatMonthName(currentMonthKey, true)})` : 'Histórico Acumulado Geral'}
+              </span>
+            </div>
+
+            {/* Alternador de visualização de métricas */}
+            <div className="flex items-center bg-slate-900/80 p-1 rounded-xl border border-white/10 text-[9px] font-black uppercase">
+              <button
+                onClick={() => setStatsScope('current')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  statsScope === 'current' 
+                    ? 'bg-emerald-500 text-slate-950 font-black shadow-md' 
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Mês Vigente
+              </button>
+              <button
+                onClick={() => setStatsScope('all')}
+                className={`px-3 py-1.5 rounded-lg transition-all ${
+                  statsScope === 'all' 
+                    ? 'bg-emerald-500 text-slate-950 font-black shadow-md' 
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Geral Acumulado
+              </button>
+            </div>
           </div>
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <StatsCard 
               icon={<RoadIcon className="text-emerald-400" />} 
@@ -804,24 +953,27 @@ const App: React.FC = () => {
             />
             <StatsCard 
               icon={<DollarSignIcon className="text-rose-400" />} 
-              label={monthFilter === 'all' ? 'Gasto Total' : 'Gasto no Mês'} 
+              label={statsScope === 'current' ? 'Gasto no Mês Vigente' : 'Gasto Total Acumulado'} 
               value={`R$ ${displayStats.totalSpent.toFixed(2)}`} 
               pulseTrigger={currentMileage}
               colorScheme="red"
+              subtext={statsScope === 'current' && currentMonthStats.totalSpent === 0 ? `Total histórico: R$ ${allTimeStats.totalSpent.toFixed(2)}` : undefined}
             />
             <StatsCard 
               icon={<GaugeIcon className="text-sky-400" />} 
-              label={monthFilter === 'all' ? 'Distância Total' : 'Distância no Mês'} 
+              label={statsScope === 'current' ? 'Distância no Mês' : 'Distância Total'} 
               value={`${displayStats.totalDistance.toFixed(0)} km`} 
               pulseTrigger={currentMileage}
               colorScheme="blue"
+              subtext={statsScope === 'current' && currentMonthStats.totalDistance === 0 ? `Total rodado: ${allTimeStats.totalDistance.toFixed(0)} km` : undefined}
             />
             <StatsCard 
               icon={<GaugeIcon className="text-amber-400" />} 
-              label={monthFilter === 'all' ? 'Média Geral' : 'Média no Mês'} 
-              value={`${displayStats.averageKmpl.toFixed(1)} km/L`} 
+              label={statsScope === 'current' ? 'Média no Mês' : 'Média Geral'} 
+              value={displayStats.averageKmpl > 0 ? `${displayStats.averageKmpl.toFixed(1)} km/L` : (statsScope === 'current' && allTimeStats.averageKmpl > 0 ? `${allTimeStats.averageKmpl.toFixed(1)} km/L` : '--')} 
               pulseTrigger={currentMileage}
               colorScheme="yellow"
+              subtext={statsScope === 'current' && currentMonthStats.averageKmpl === 0 && allTimeStats.averageKmpl > 0 ? 'Média histórica geral' : undefined}
             />
           </div>
         </motion.section>
@@ -990,7 +1142,7 @@ const App: React.FC = () => {
           </div>
         </motion.section>
 
-        {/* SEÇÃO 4: HISTÓRICO DE REGISTROS (COM TONS SUAVES POR TIPO DE COMBUSTÍVEL) */}
+        {/* SEÇÃO 4: ABASTECIMENTOS DO MÊS VIGENTE & HISTÓRICO AUTOMÁTICO */}
         <motion.section 
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -998,35 +1150,160 @@ const App: React.FC = () => {
           transition={{ duration: 0.5, delay: 0.15 }}
           className="space-y-4"
         >
-          <div className="flex justify-between items-center bg-slate-900/60 p-3 rounded-2xl border border-white/10">
-            <div className="flex items-center gap-2">
-              <ChartIcon size={16} className="text-sky-400 animate-pulse" />
-              <h2 className="text-xs font-black text-white uppercase tracking-[0.25em] font-display">Registros Históricos</h2>
+          {/* NAVEGADOR ENTRE MÊS VIGENTE E HISTÓRICO DE MESES ANTERIORES */}
+          <div className="bg-slate-900/80 p-2.5 rounded-2xl border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setEntriesViewTab('current')}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-display font-black text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                  entriesViewTab === 'current'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                    : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <FuelPumpIcon size={16} />
+                <span>Mês Vigente ({formatMonthName(currentMonthKey, true)})</span>
+                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
+                  entriesViewTab === 'current' ? 'bg-slate-950 text-emerald-400' : 'bg-white/10 text-gray-300'
+                }`}>
+                  {currentMonthEntries.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setEntriesViewTab('history')}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-display font-black text-xs uppercase tracking-wider transition-all cursor-pointer ${
+                  entriesViewTab === 'history'
+                    ? 'bg-gradient-to-r from-sky-500 to-indigo-500 text-slate-950 shadow-md shadow-sky-500/20'
+                    : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <ChartIcon size={16} />
+                <span>Histórico (Meses Anteriores)</span>
+                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${
+                  entriesViewTab === 'history' ? 'bg-slate-950 text-sky-400' : 'bg-white/10 text-gray-300'
+                }`}>
+                  {historyEntries.length}
+                </span>
+              </button>
             </div>
-            <select 
-              value={monthFilter} 
-              onChange={(e) => setMonthFilter(e.target.value)}
-              className="bg-slate-800 border border-white/15 text-white text-[10px] font-black uppercase tracking-wider rounded-full px-4 py-2 outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all cursor-pointer shadow-md"
-            >
-              <option value="all">TODOS OS MESES</option>
-              {availableMonths.map(month => (
-                <option key={month} value={month}>
-                  {new Date(month + '-02T00:00:00').toLocaleString('pt-BR', { month: 'short', year: '2-digit', timeZone: 'UTC' }).toUpperCase()}
-                </option>
-              ))}
-            </select>
+
+            {/* SELETOR DE MÊS HISTÓRICO */}
+            {entriesViewTab === 'history' && (
+              <div className="flex items-center gap-2">
+                <select 
+                  value={historyMonthFilter} 
+                  onChange={(e) => setHistoryMonthFilter(e.target.value)}
+                  className="bg-slate-800 border border-white/15 text-white text-[10px] font-black uppercase tracking-wider rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-sky-500/50 transition-all cursor-pointer shadow-md w-full sm:w-auto"
+                >
+                  <option value="all_history">TODOS OS MESES ANTERIORES ({historyEntries.length})</option>
+                  {availableHistoryMonths.map(month => (
+                    <option key={month} value={month}>
+                      {formatMonthName(month).toUpperCase()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
-          <MonthSummary entries={filteredEntries} filterValue={monthFilter} />
+          {/* CABEÇALHO DA SEÇÃO DE ACORDO COM A ABA SELECIONADA */}
+          {entriesViewTab === 'current' ? (
+            <div className="bg-emerald-950/30 border border-emerald-500/25 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <h3 className="font-display font-black text-sm text-white uppercase tracking-wider">
+                    Abastecimentos de {formatMonthName(currentMonthKey)}
+                  </h3>
+                  <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    MÊS VIGENTE ATIVO
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Mostrando exclusivamente os abastecimentos deste mês. O sistema registrou automaticamente os {historyEntries.length} abastecimentos anteriores no Histórico.
+                </p>
+              </div>
+              <button
+                onClick={() => { setEntryToEdit(null); setActiveModal('entry'); }}
+                className="btn-primary text-xs py-2 px-4 whitespace-nowrap shadow-md flex items-center gap-1.5"
+              >
+                <PlusIcon size={14} />
+                + Novo Abastecimento
+              </button>
+            </div>
+          ) : (
+            <div className="bg-sky-950/30 border border-sky-500/25 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <ChartIcon size={16} className="text-sky-400" />
+                  <h3 className="font-display font-black text-sm text-white uppercase tracking-wider">
+                    Histórico Arquivado Automaticamente
+                  </h3>
+                  <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                    {historyMonthFilter === 'all_history' ? 'TODOS OS MESES ANTERIORES' : formatMonthName(historyMonthFilter).toUpperCase()}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Todos os abastecimentos de meses anteriores ficam guardados e consolidados permanentemente no sistema.
+                </p>
+              </div>
+              <button
+                onClick={() => setEntriesViewTab('current')}
+                className="bg-white/10 hover:bg-white/15 text-white text-xs font-bold py-2 px-3.5 rounded-xl transition-all flex items-center gap-1.5 border border-white/10"
+              >
+                ← Voltar ao Mês Vigente
+              </button>
+            </div>
+          )}
+
+          <MonthSummary 
+            entries={displayedEntries} 
+            filterValue={entriesViewTab === 'current' ? currentMonthKey : historyMonthFilter} 
+          />
 
           <div className="grid gap-3">
-            {filteredEntries.length === 0 ? (
-              <div className="text-center text-gray-400 py-16 bg-slate-900/40 rounded-2xl border border-dashed border-white/10">
-                <FuelPumpIcon size={48} className="mx-auto mb-4 opacity-20" />
-                <h3 className="text-lg font-black text-white/70">Sem registros</h3>
-                <p className="text-xs text-gray-400 mt-1">Nenhum abastecimento encontrado para o filtro selecionado.</p>
+            {displayedEntries.length === 0 ? (
+              <div className="text-center py-12 px-4 bg-slate-900/40 rounded-2xl border border-dashed border-white/10 space-y-3">
+                <div className="p-3 bg-white/5 rounded-2xl w-14 h-14 mx-auto flex items-center justify-center">
+                  <FuelPumpIcon size={32} className="text-gray-500" />
+                </div>
+                {entriesViewTab === 'current' ? (
+                  <>
+                    <h3 className="text-base font-black text-white">Nenhum abastecimento em {formatMonthName(currentMonthKey)} ainda</h3>
+                    <p className="text-xs text-gray-400 max-w-md mx-auto">
+                      Seus {historyEntries.length} abastecimentos de meses anteriores estão registrados e protegidos no Histórico. Clique no botão abaixo para adicionar o primeiro abastecimento deste mês!
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                      <button
+                        onClick={() => { setEntryToEdit(null); setActiveModal('entry'); }}
+                        className="btn-primary text-xs py-2.5 px-5 shadow-lg flex items-center gap-2"
+                      >
+                        <PlusIcon size={16} />
+                        Abastecer Agora
+                      </button>
+                      <button
+                        onClick={() => setEntriesViewTab('history')}
+                        className="bg-slate-800 hover:bg-slate-700 text-sky-300 border border-sky-500/30 text-xs font-bold py-2.5 px-4 rounded-xl transition-all"
+                      >
+                        Ver Histórico ({historyEntries.length} registros)
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-base font-black text-white">Nenhum registro histórico neste filtro</h3>
+                    <p className="text-xs text-gray-400">Selecione outro mês no seletor ou retorne ao mês vigente.</p>
+                    <button
+                      onClick={() => setEntriesViewTab('current')}
+                      className="bg-slate-800 text-emerald-300 text-xs font-bold py-2 px-4 rounded-xl mt-2"
+                    >
+                      Ir para Mês Vigente
+                    </button>
+                  </>
+                )}
               </div>
-            ) : filteredEntries.map((entry, index) => {
+            ) : displayedEntries.map((entry, index) => {
               const isEthanol = entry.fuelType === FuelType.ETHANOL;
               const isGasoline = entry.fuelType === FuelType.GASOLINE;
               const isCNG = entry.fuelType === FuelType.CNG;

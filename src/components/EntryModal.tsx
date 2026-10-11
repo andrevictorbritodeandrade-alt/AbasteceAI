@@ -28,8 +28,12 @@ export const EntryModal: React.FC<EntryModalProps> = ({ isOpen, onClose, onSave,
         ? entryToEdit.date 
         : new Date((entryToEdit.date as any).seconds * 1000);
       
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+
       setFormData({
-        date: date.toISOString().split('T')[0],
+        date: `${y}-${m}-${d}`,
         totalValue: entryToEdit.totalValue.toString(),
         pricePerLiter: entryToEdit.pricePerLiter.toString(),
         kmEnd: entryToEdit.kmEnd.toString(),
@@ -38,8 +42,13 @@ export const EntryModal: React.FC<EntryModalProps> = ({ isOpen, onClose, onSave,
         isFull: entryToEdit.isFull !== false
       });
     } else {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+
       setFormData({ 
-        date: new Date().toISOString().split('T')[0],
+        date: `${y}-${m}-${d}`,
         totalValue: '100',
         pricePerLiter: '6.59',
         kmEnd: lastKm > 0 ? lastKm.toString() : '',
@@ -64,12 +73,23 @@ export const EntryModal: React.FC<EntryModalProps> = ({ isOpen, onClose, onSave,
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    let entryDate: Date;
+    if (formData.date && formData.date.includes('-')) {
+      const [y, m, d] = formData.date.split('-').map(Number);
+      entryDate = new Date(y, (m || 1) - 1, d || 1, 12, 0, 0);
+    } else {
+      entryDate = new Date();
+    }
+
+    const kmValue = parseInt(formData.kmEnd);
+    const parsedKm = isNaN(kmValue) || kmValue <= 0 ? (lastKm || 153986) : kmValue;
+
     onSave({
       id: entryToEdit?.id,
-      date: new Date(formData.date),
-      totalValue: parseFloat(formData.totalValue),
-      pricePerLiter: parseFloat(formData.pricePerLiter),
-      kmEnd: parseInt(formData.kmEnd),
+      date: entryDate,
+      totalValue: parseFloat(formData.totalValue) || 100,
+      pricePerLiter: parseFloat(formData.pricePerLiter) || 6.59,
+      kmEnd: parsedKm,
       fuelType: formData.fuelType,
       notes: formData.notes,
       isFull: formData.isFull

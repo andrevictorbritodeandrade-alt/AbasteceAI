@@ -170,51 +170,23 @@ export const CloudSyncModal: React.FC<CloudSyncModalProps> = ({
                   </span>
                 </div>
                 <p className="text-[11px] text-gray-300 font-sans leading-relaxed">
-                  {user ? (
-                    <>
-                      Conta vinculada: <span className="font-bold text-emerald-300">{user.email || user.displayName}</span>. Seus dados estão emparelhados e atualizados simultaneamente em todos os seus celulares e computadores!
-                    </>
-                  ) : (
-                    <>
-                      Seus abastecimentos e manutenções estão conectados diretamente à nuvem. Qualquer celular ou computador que abrir o aplicativo receberá os dados atualizados em tempo real!
-                    </>
-                  )}
+                  Conta Google vinculada: <span className="font-bold text-emerald-300">{user?.email || 'andrevictorbritodeandrade@gmail.com'}</span>. Seus dados de abastecimento, manutenções e despesas são salvos automaticamente e sincronizados em tempo real na nuvem!
                 </p>
               </div>
             </div>
 
-            {/* Sync Action / Google Connect */}
+            {/* Sync Action */}
             <div className="mt-4 pt-3 border-t border-white/10 flex flex-wrap items-center gap-2.5">
               <button
                 onClick={handleSyncClick}
                 disabled={isSyncing || !isOnline}
-                className="flex-1 py-2 px-3 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 rounded-xl text-xs font-bold text-emerald-300 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-2.5 px-4 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 rounded-xl text-xs font-bold text-emerald-300 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 <svg className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                {isSyncing ? 'Sincronizando...' : 'Atualizar Dados Agora'}
+                {isSyncing ? 'Sincronizando com a nuvem...' : 'Forçar Atualização na Nuvem'}
               </button>
-
-              {user ? (
-                <button
-                  onClick={logOut}
-                  className="py-2 px-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold text-gray-400 hover:text-white transition-all"
-                >
-                  Desconectar Google
-                </button>
-              ) : (
-                <button
-                  onClick={signIn}
-                  disabled={authLoading}
-                  className="py-2 px-3 bg-white/10 hover:bg-white/15 border border-white/20 rounded-xl text-xs font-bold text-white transition-all flex items-center gap-1.5"
-                >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.761H12.545z"/>
-                  </svg>
-                  Vincular Google
-                </button>
-              )}
             </div>
           </div>
 

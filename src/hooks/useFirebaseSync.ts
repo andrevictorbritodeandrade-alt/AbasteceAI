@@ -7,7 +7,8 @@ import {
   signInWithRedirect, 
   getRedirectResult, 
   GoogleAuthProvider, 
-  signOut 
+  signOut,
+  signInAnonymously
 } from 'firebase/auth';
 import { 
   collection, 
@@ -87,6 +88,7 @@ export const getInitialSeedData = (): RawFuelEntry[] => [
   { id: '11', date: new Date('2026-07-25T19:21:00Z'), totalValue: 50.00, pricePerLiter: 6.59, kmEnd: 149088, fuelType: FuelType.GASOLINE, notes: 'Posto ipiranga do queijão' },
   { id: 'sep4', date: new Date('2026-09-04T12:00:00Z'), totalValue: 318.56, pricePerLiter: 6.789428815, kmEnd: 152125, fuelType: FuelType.GASOLINE, isFull: true, notes: 'Posto Ipiranga da Avenida - Consumo real: 16,03 km/L' },
   { id: 'sep5', date: new Date('2026-09-12T12:00:00Z'), totalValue: 100.00, pricePerLiter: 6.269592476, kmEnd: 152753, fuelType: FuelType.GASOLINE, isFull: false, notes: 'Carrefour - Distância percorrida: 628 km' },
+  { id: 'oct1', date: new Date('2026-10-09T15:00:00Z'), totalValue: 50.00, pricePerLiter: 6.59, kmEnd: 154765, fuelType: FuelType.GASOLINE, isFull: false, notes: 'Posto Ipiranga da Avenida Automóvel Clube' },
 ];
 
 export const defaultStationsData: FavoriteStation[] = [
@@ -107,6 +109,15 @@ export const defaultStationsData: FavoriteStation[] = [
     bestFuel: FuelType.GASOLINE,
     notes: 'Gasolina comum excelente e preço competitivo.',
     city: 'Rodovia'
+  },
+  {
+    id: 'fs-3',
+    name: 'Posto Ipiranga - Av. Automóvel Clube',
+    brand: 'Ipiranga',
+    rating: 5,
+    bestFuel: FuelType.GASOLINE,
+    notes: 'Gasolina a R$ 6,59 na Av. Automóvel Clube.',
+    city: 'Rio de Janeiro'
   }
 ];
 
@@ -121,7 +132,7 @@ export const defaultMaintenanceData: MaintenanceData = {
   coolant: 140000,
   sparkPlugs: 140000,
   timingBelt: 135000,
-  currentOdometer: 153986,
+  currentOdometer: 154765,
 };
 
 const parseEntryDate = (val: any): Date => {
@@ -168,8 +179,8 @@ export function useFirebaseSync() {
         if (!parsed.oil || parsed.oil < 153986) {
           parsed.oil = 153986;
         }
-        if (!parsed.currentOdometer || parsed.currentOdometer < 153986) {
-          parsed.currentOdometer = 153986;
+        if (!parsed.currentOdometer || parsed.currentOdometer < 154765) {
+          parsed.currentOdometer = 154765;
         }
         return parsed;
       }
@@ -220,7 +231,7 @@ export function useFirebaseSync() {
     };
   }, []);
 
-  // Monitor Auth state (optional Google user login)
+  // Automatic Google account linkage and active auth session
   useEffect(() => {
     getRedirectResult(auth).then((result) => {
       if (result?.user) {
@@ -231,7 +242,14 @@ export function useFirebaseSync() {
     });
 
     const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
+      if (u) {
+        setUser(u);
+      } else {
+        // Auto-authenticate in background so Firebase always has an active session
+        signInAnonymously(auth).catch((anonErr) => {
+          console.warn("Auto anonymous session init:", anonErr);
+        });
+      }
       setAuthLoading(false);
     });
     return () => unsubscribe();
@@ -326,6 +344,34 @@ export function useFirebaseSync() {
             }
           }
         }
+
+        // Also preserve and sync any user-created local entries that are not in cloudData yet
+        try {
+          const cachedLocal = localStorage.getItem('fuelEntries') || localStorage.getItem('cached_cloud_entries');
+          if (cachedLocal) {
+            const parsedLocal: RawFuelEntry[] = JSON.parse(cachedLocal);
+            const userLocalEntries = parsedLocal.filter(item => !mergedData.some(m => m.id === item.id));
+            if (userLocalEntries.length > 0) {
+              const formattedLocal = userLocalEntries.map(e => ({ ...e, date: parseEntryDate(e.date) }));
+              mergedData = [...mergedData, ...formattedLocal];
+              try {
+                const localBatch = writeBatch(db);
+                formattedLocal.forEach(le => {
+                  localBatch.set(doc(db, 'entries', le.id), {
+                    ...le,
+                    date: le.date instanceof Date ? le.date.toISOString() : le.date
+                  });
+                });
+                localBatch.commit().catch(console.warn);
+              } catch (bErr) {
+                console.warn("Could not batch write unsynced local entries:", bErr);
+              }
+            }
+          }
+        } catch (localCheckErr) {
+          console.warn("Error checking local cache during cloud snapshot:", localCheckErr);
+        }
+
         setEntries(mergedData);
         localStorage.setItem('cached_cloud_entries', JSON.stringify(mergedData));
         localStorage.setItem('fuelEntries', JSON.stringify(mergedData));

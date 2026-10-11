@@ -101,7 +101,7 @@ export const OdometerModal: React.FC<OdometerModalProps> = ({
                 type="number"
                 value={kmInput}
                 onChange={(e) => setKmInput(e.target.value)}
-                placeholder="Ex: 153986"
+                placeholder="Ex: 154765"
                 className="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-xl font-black text-white focus:outline-none focus:border-emerald-500 transition-colors"
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">
